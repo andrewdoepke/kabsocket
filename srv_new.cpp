@@ -7,6 +7,8 @@ using std::string;
 using std::cout;  
 using std::endl;
 
+#define PORT 1234
+
 string read_(tcp::socket & socket) {  
        boost::asio::streambuf buf;  
        boost::asio::read_until( socket, buf, "\n" );  
@@ -23,7 +25,7 @@ int main() {
       boost::asio::io_service io_service;  
   
 //listen for new connection  
-      tcp::acceptor acceptor_(io_service, tcp::endpoint(tcp::v4(), 1234 ));  
+      tcp::acceptor acceptor_(io_service, tcp::endpoint(tcp::v4(), PORT ));  
   
 //socket creation  
       tcp::socket socket_(io_service);  

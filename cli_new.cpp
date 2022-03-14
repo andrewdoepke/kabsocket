@@ -7,6 +7,9 @@ using std::string;
 using std::cout;  
 using std::endl;
 
+#define PORT 1234
+#define HOST "127.0.0.1"
+
 int main() {  
      boost::asio::io_service io_service;  
   
@@ -14,7 +17,7 @@ int main() {
      tcp::socket socket(io_service);  
   
 //connection  
-     socket.connect( tcp::endpoint( boost::asio::ip::address::from_string("127.0.0.1"), 1234 ));  
+     socket.connect( tcp::endpoint( boost::asio::ip::address::from_string(HOST), PORT ));  
   
 // request/message from client  
      const string msg = "Hello from Client!\n";  
