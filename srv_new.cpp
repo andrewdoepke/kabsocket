@@ -22,23 +22,45 @@ void send_(tcp::socket & socket, const string& message) {
 } 
 
 int main() {  
-      boost::asio::io_service io_service;  
-  
-//listen for new connection  
-      tcp::acceptor acceptor_(io_service, tcp::endpoint(tcp::v4(), PORT ));  
-  
-//socket creation  
-      tcp::socket socket_(io_service);  
-  
-//waiting for the connection  
-      acceptor_.accept(socket_);  
-  
-//read operation  
-      string message = read_(socket_);  
-      cout << message << endl;  
-  
-//write operation  
-      send_(socket_, "Hello From Server!");  
-      cout << "Servent sent Hello message to Client!" << endl;  
-      return 0;  
+      boost::asio::io_service io_service;
+	  
+//------------------user input------------------//
+
+//GBN or SR?
+
+//Packet size
+
+//Timeout interval (user-specified or ping-calculated)
+
+//Sliding window size
+
+//Range of sequence numbers
+
+//Situational errors (none, randomly generated, or user-specified, i.e., drop packets 2, 4, 5, lose acks 11, etc.)
+	  
+	  
+
+//------------------start server functionality------------------//
+
+	while(1){ //loop forever. This will probably have to change and work conditionally
+	  
+		//Create a listener on specified port
+			  tcp::acceptor acceptor_(io_service, tcp::endpoint(tcp::v4(), PORT ));  
+		  
+		//Create a tcp socket
+			  tcp::socket socket_(io_service);  
+		  
+		//Wait for a connection and accept when one comes in
+			  acceptor_.accept(socket_);  
+		  
+		//read operation  
+			  string message = read_(socket_);  
+			  cout << message << endl;  
+		  
+		//write operation  
+			  send_(socket_, "Hello From Server!");  
+			  cout << "Servent sent Hello message to Client!" << endl;  
+	}
+	
+	return 0;  
 }
