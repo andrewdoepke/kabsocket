@@ -22,24 +22,41 @@ void send_(tcp::socket & socket, const string& message) {
        boost::asio::write( socket, boost::asio::buffer(message) );  
 } 
 
+bool readIsInt(string input){
+   for(int i = 0; i < input.length(); i++){
+      if(isdigit(input[i]) == false)
+         return false;
+   }
+   return true;
+}
+
 int main() {  
-      boost::asio::io_service io_service;
-	  
+    boost::asio::io_service io_service;
+
+	int proType = 0;
+	int packetSize = 0;
+	int timeout = 0;
+	int slidingWinSize = 0;
+	int seqLower = 0;
+	int seqUpper = 0;
+	char sitErrors;
+	int dropPacket[100];
+	int tempCount = 0;
+	string inp = "";
+	
 //------------------user input------------------//
 
-int proType;
-int packetSize;
-int timeout;
-int slidingWinSize;
-int seqLower;
-int seqUpper;
-char sitErrors;
-int dropPacket[100];
-int tempCount = 0;
-
 //GBN or SR?
-	cout << "Would you like to use GBN or SR protocol? 1 for GBN, 2 for SR, anything else to exit.";
-	cin >> proType;
+	while(proType < 1){
+		cout << "Would you like to use GBN or SR protocol? 1 for GBN, 2 for SR, anything else to exit."<<endl;
+		cin >> inp;
+		if(readIsInt(inp)){//parse the int
+			proType = stoi(inp);
+		}
+		if(quant < 1 || !readIsInt(inp)){
+			cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
+		}
+	}
 	
 //Packet size
 	cout << "Please enter packet size: ";
