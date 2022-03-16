@@ -36,7 +36,7 @@ int seqUpper;
 int sitError;
 
 //GBN or SR?
-	cout << "Would you like to use GBN or SR"
+	cout << "Would you like to use GBN or SR protocol? 1 for GBN, 2 for SR, anything else to exit."
 	cin >> proType;
 	
 //Packet size
