@@ -47,13 +47,13 @@ int main() {
 //------------------user input------------------//
 
 //GBN or SR?
-	while(proType < 1){
+	while(proType < 1 || proType > 2){
 		cout << "Would you like to use GBN or SR protocol? 1 for GBN, 2 for SR, anything else to exit."<<endl;
 		cin >> inp;
 		if(readIsInt(inp)){//parse the int
 			proType = stoi(inp);
 		}
-		if(quant < 1 || !readIsInt(inp)){
+		if(proType < 1 || !readIsInt(inp)){
 			cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
 		}
 	}
