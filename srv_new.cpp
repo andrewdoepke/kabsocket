@@ -4,7 +4,8 @@
 using namespace boost::asio;  
 using ip::tcp;  
 using std::string;  
-using std::cout;  
+using std::cout;
+using std::cin; 
 using std::endl;
 
 #define PORT 1234
@@ -26,18 +27,38 @@ int main() {
 	  
 //------------------user input------------------//
 
-//GBN or SR?
+int proType;
+int packetSize;
+int timeout;
+int slidingWinSize;
+int seqLower;
+int seqUpper;
+int sitError;
 
+//GBN or SR?
+	cout << "Would you like to use GBN or SR"
+	cin >> proType;
+	
 //Packet size
 
+	cin >> packetSize;
+	
 //Timeout interval (user-specified or ping-calculated)
 
+	cin >> timeout;
+	
 //Sliding window size
 
+	cin >> slidingWinSize;
+	
 //Range of sequence numbers
 
+	cin >> seqLower;
+	
+	cin >> seqUpper;
 //Situational errors (none, randomly generated, or user-specified, i.e., drop packets 2, 4, 5, lose acks 11, etc.)
-	  
+
+	cin >> sitError;
 	  
 
 //------------------start server functionality------------------//
