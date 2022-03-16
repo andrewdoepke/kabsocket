@@ -33,32 +33,48 @@ int timeout;
 int slidingWinSize;
 int seqLower;
 int seqUpper;
-int sitError;
+char sitErrors;
+int dropPacket[100];
+int tempCount = 0;
 
 //GBN or SR?
-	cout << "Would you like to use GBN or SR protocol? 1 for GBN, 2 for SR, anything else to exit."
+	cout << "Would you like to use GBN or SR protocol? 1 for GBN, 2 for SR, anything else to exit.";
 	cin >> proType;
 	
 //Packet size
-
+	cout << "Please enter packet size: ";
 	cin >> packetSize;
 	
 //Timeout interval (user-specified or ping-calculated)
-
+	cout << "Please enter timeout interval: ";
 	cin >> timeout;
 	
 //Sliding window size
-
+	cout << "Please enter sliding window size: ";
 	cin >> slidingWinSize;
 	
 //Range of sequence numbers
-
+	cout << "Please enter the lower range of sequence numbers: ";
 	cin >> seqLower;
 	
+	cout << "Please enter the upper range of sequence numbers: ";
 	cin >> seqUpper;
 //Situational errors (none, randomly generated, or user-specified, i.e., drop packets 2, 4, 5, lose acks 11, etc.)
 
-	cin >> sitError;
+	//Infinitely prompt for drop packets until done
+	cout << "Would you like to drop any packets? (Y/N): ";
+	cin >> sitErrors;
+	while (sitErrors == 'Y') {
+		cout << "Please enter a packet you would like to drop: ";
+		cin >> dropPacket[tempCount];
+		tempCount++;
+		cout << "Would you like to drop any other packets? (Y/N): ";
+		cin >> sitErrors;
+	}
+	tempCount = 0;
+
+	
+
 	  
 
 //------------------start server functionality------------------//
