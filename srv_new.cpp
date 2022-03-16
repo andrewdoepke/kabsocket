@@ -48,7 +48,7 @@ int main() {
 
 //GBN or SR?
 	while(proType < 1 || proType > 2){
-		cout << "Would you like to use GBN or SR protocol? 1 for GBN, 2 for SR, anything else to exit."<<endl;
+		cout << "Would you like to use GBN or SR protocol? 1 for GBN, 2 for SR."<<endl;
 		cin >> inp;
 		if(readIsInt(inp)){//parse the int
 			proType = stoi(inp);
@@ -59,8 +59,16 @@ int main() {
 	}
 	
 //Packet size
-	cout << "Please enter packet size: ";
-	cin >> packetSize;
+	while(packetSize < 1){
+		cout << "Please enter packet size (in bytes): "<<endl;
+		cin >> inp;
+		if(readIsInt(inp)){//parse the int
+			packetSize = stoi(inp);
+		}
+		if(packetSize < 1 || !readIsInt(inp)){
+			cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
+		}
+	}
 	
 //Timeout interval (user-specified or ping-calculated)
 	cout << "Please enter timeout interval: ";
