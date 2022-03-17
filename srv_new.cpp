@@ -41,6 +41,7 @@ int main() {
 	int seqUpper = 0;
 	char sitErrors;
 	int dropPacket[100];
+	int loseAck[100];
 	int tempCount = 0;
 	string inp = "";
 	
@@ -48,19 +49,19 @@ int main() {
 
 //GBN or SR?
 	while(proType < 1 || proType > 2){
-		cout << "Would you like to use GBN or SR protocol? 1 for GBN, 2 for SR."<<endl;
+		cout << "Would you like to use GBN or SR protocol? 1 for GBN, 2 for SR." << endl;
 		cin >> inp;
 		if(readIsInt(inp)){//parse the int
 			proType = stoi(inp);
 		}
-		if(proType < 1 || !readIsInt(inp)){
+		if(proType < 1 || !readIsInt(inp) || proType > 2){
 			cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
 		}
 	}
 	
 //Packet size
 	while(packetSize < 1){
-		cout << "Please enter packet size (in bytes): "<<endl;
+		cout << "Please enter packet size (in bytes): " << endl;
 		cin >> inp;
 		if(readIsInt(inp)){//parse the int
 			packetSize = stoi(inp);
@@ -71,27 +72,88 @@ int main() {
 	}
 	
 //Timeout interval (user-specified or ping-calculated)
-	cout << "Please enter timeout interval: ";
-	cin >> timeout;
+	while(timeout < 1){
+		cout << "Please enter the timeout interval: " << endl;
+		cin >> inp;
+		if(readIsInt(inp)){//parse the int
+			timeout = stoi(inp);
+		}
+		if(timeout < 1 || !readIsInt(inp)){
+			cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
+		}
+	}
 	
 //Sliding window size
-	cout << "Please enter sliding window size: ";
-	cin >> slidingWinSize;
+	while(slidingWinSize < 1){
+		cout << "Please enter sliding window size: " << endl;
+		cin >> inp;
+		if(readIsInt(inp)){//parse the int
+			slidingWinSize = stoi(inp);
+		}
+		if(slidingWinSize < 1 || !readIsInt(inp)){
+			cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
+		}
+	}
 	
 //Range of sequence numbers
-	cout << "Please enter the lower range of sequence numbers: ";
-	cin >> seqLower;
+	while(seqLower < 1){
+		cout << "Please enter the lower range of sequence numbers: " << endl;
+		cin >> inp;
+		if(readIsInt(inp)){//parse the int
+			seqLower = stoi(inp);
+		}
+		if(seqLower < 1 || !readIsInt(inp)){
+			cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
+		}
+	}
+	while(seqUpper < 1){
+		cout << "Please enter the upper range of sequence numbers: " << endl;
+		cin >> inp;
+		if(readIsInt(inp)){//parse the int
+			seqUpper = stoi(inp);
+		}
+		if(seqUpper < 1 || !readIsInt(inp) || seqUpper < seqLower){
+			cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
+		}
+	}
 	
-	cout << "Please enter the upper range of sequence numbers: ";
-	cin >> seqUpper;
+	
 //Situational errors (none, randomly generated, or user-specified, i.e., drop packets 2, 4, 5, lose acks 11, etc.)
 
 	//Infinitely prompt for drop packets until done
-	cout << "Would you like to drop any packets? (Y/N): ";
+	cout << "Would you like to drop any packets? (Y/N): " << endl;
 	cin >> sitErrors;
 	while (sitErrors == 'Y') {
-		cout << "Please enter a packet you would like to drop: ";
-		cin >> dropPacket[tempCount];
+		while(dropPacket[tempCount] < 1){
+			cout << "Please enter a packet you would like to drop: " << endl;
+			cin >> inp;
+			if(readIsInt(inp)){//parse the int
+				dropPacket[tempCount] = stoi(inp);
+			}
+			if(dropPacket[tempCount] < 1 || !readIsInt(inp)){
+				cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
+			}
+		}
+		tempCount++;
+		cout << "Would you like to drop any other packets? (Y/N): " << endl;
+		cin >> sitErrors;
+	}
+	tempCount = 0;
+
+	//Infinitely prompt to lose acks until done
+	cout << "Would you like to lose any acks? (Y/N): " << endl;
+	cin >> sitErrors;
+	while (sitErrors == 'Y') {
+		while(loseAck[tempCount] < 1){
+			cout << "Please enter an ack you would like to lose: " << endl;
+			cin >> inp;
+			if(readIsInt(inp)){//parse the int
+				loseAck[tempCount] = stoi(inp);
+			}
+			if(loseAck[tempCount] < 1 || !readIsInt(inp)){
+				cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
+			}
+		}
 		tempCount++;
 		cout << "Would you like to drop any other packets? (Y/N): ";
 		cin >> sitErrors;
