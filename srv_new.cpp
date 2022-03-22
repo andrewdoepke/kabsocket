@@ -54,7 +54,6 @@ int main() {
 	
 	std::vector<int> dropPacket;
 	std::vector<int> loseAck;
-	int tempCount = 0;
 	
 	string inp = "";
 	int tempVal = 0;
@@ -192,7 +191,6 @@ int main() {
 					cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
 				} else {
 					dropPacket.push_back(tempVal);
-					tempCount++;
 				}
 				
 			}
@@ -210,7 +208,6 @@ int main() {
 			
 			
 		} //end while 1
-		tempCount = 0;
 		
 		std::sort(dropPacket.begin(), dropPacket.end()); //sort so packets are in order
 
@@ -235,7 +232,6 @@ int main() {
 					cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
 				} else { //good so use this value
 					loseAck.push_back(tempVal);
-					tempCount++;
 				}
 			}
 				
@@ -251,7 +247,6 @@ int main() {
 			
 			
 		}//end while 2
-		tempCount = 0;
 		
 		std::sort(loseAck.begin(), loseAck.end()); //Sort so they are in order
 		
