@@ -1,3 +1,5 @@
+.PHONY: server client
+
 all:
 	make server
 	make client
@@ -8,4 +10,5 @@ server:
 client:
 	g++ cli_new.cpp -o client -lboost_system -lpthread
 
-
+clean:
+	rm server client
