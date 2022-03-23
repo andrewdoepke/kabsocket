@@ -1,6 +1,8 @@
 #include <iostream>  
 #include <boost/asio.hpp>
 #include<boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
+#include <random>
 
   
 using namespace boost::asio;  
@@ -10,7 +12,64 @@ using std::cout;
 using std::cin; 
 using std::endl;
 
-#define PORT 1234
+const int PORT = 1234; //Simulated port for this program
+
+
+
+//--------------Define Flags--------------//
+// https://www.geeksforgeeks.org/tcp-flags/
+//If changed, we need to also copy this to client code.
+
+	const uint8_t SYN = 0; //Synchronization
+	const uint8_t ACK = 1; //Acknowledgement
+	const uint8_t FIN = 2; //Finish
+	const uint8_t RST = 3; //Reset
+	const uint8_t PSH = 4; //Push
+	const uint8_t URG = 5; //Urgent
+	
+	//For sliding window protocol. This will be separate from normal TCP flags.
+	const uint8_t GBN = 6;
+	const uint8_t SR = 7;
+//---------------------------------------//
+
+
+//TCP Packet Header 
+//We can maybe just comment some of these out if they're not gonna be used.
+//https://www.techrepublic.com/article/exploring-the-anatomy-of-a-data-packet/
+
+struct tcp_header {
+	uint16_t s_port = PORT; //sauce port. This is a default value rn but if we do multithreading, we'd have to select from a specified list of open ports.
+	
+	uint16_t d_port = PORT; //destination port. Standard in a packet but it's also good to use the same ports on both sides.
+	
+	uint32_t seq_num; //sequence number. This will be generated during runtime.
+	
+	uint32_t ack_num; //acknowledgement number. 
+	
+	unsigned int offset; //Data Offset (entire size of header in bits % 32 bits)
+	
+	//uint8_t reserved = 0; //Reserved field. Doesn't do anything, just leave it as 0.
+	
+	uint8_t flag; //Packet flag. Use like: h.flag = ACK; or like if(h.flag == ACK) {...}
+	
+	uint16_t window; // Window size of sender's receive window. 
+	
+	uint16_t checksum; //Checksum value
+	
+	//uint16_t urgent_ptr; //Pointer to urgent byte if sender wants it to be urgent. We could prolly implement this but idk.
+	
+	//string options; //TCP options
+	
+	//string upper_level_data; //Data for upper layer. Idk what this is for.
+	
+	//uint8_t sw_prot; //Type of sliding window protocol used. Can either be GBN or SR
+};
+
+//TCP Packet Structure
+struct tcp_packet {
+	tcp_header header;
+	string body;
+};
 
 string read_(tcp::socket & socket) {  
        boost::asio::streambuf buf;  
@@ -24,6 +83,7 @@ void send_(tcp::socket & socket, const string& message) {
        boost::asio::write( socket, boost::asio::buffer(message) );  
 } 
 
+//Validate integer from string
 bool readIsInt(string input){
    for(int i = 0; i < input.length(); i++){
       if(isdigit(input[i]) == false)
@@ -32,22 +92,51 @@ bool readIsInt(string input){
    return true;
 }
 
+//Trim a string
 string trim(string input){
 	boost::trim_right(input);
 	boost::trim_left(input);
 	return input;
 }
 
+/*
+//Function to send a file to a given connection after being accepted.
+int sendFile() {
+	
+	unsigned int currPack = 0;
+}
+*/
 
-int main() {  
-    boost::asio::io_service io_service;
+ //Generates a pseudo random number within the bounds passed in. Used to get the first sequence number for a transaction.
+int genSeqNum(int lower, int upper){
+	std::random_device rd; //device to generate randoms
+	std::mt19937 gen(rd()); //seeding the generator. mt19937 is a pseudo random number generator
+	std::uniform_int_distribution<> distr(lower, upper); //Defining the range
+	return distr(gen); //Generate 
+}
+
+//Gets a sequence number given the last number in sequence and the range to wrap on.
+int getSeqNum(int last, int upper, int lower) {
+	if(last == upper){
+		return lower; //wrap
+	} else if(last >= lower && last < upper){
+		return last + 1; //normal case
+	}
+	
+	//Shouldn't get here smh. this should crash if assigning to the uint.
+	return -1;
+	
+}
+
+
+int main(int argc, char** argv) { 
 
 	int proType = 0;
 	int packetSize = 0;
 	int timeout = -1; //set to -1 to allow another option on 0
 	int slidingWinSize = 0;
-	int seqLower = 0;
-	int seqUpper = 0;
+	int seqLower = -1;
+	int seqUpper = -1;
 	
 	int sitErrorInp = 0; //menu input for this. Also is the type of errors to be generated.
 	char sitErrors; //Y or N character for menu.
@@ -57,6 +146,7 @@ int main() {
 	
 	string inp = "";
 	int tempVal = 0;
+	
 	
 //------------------user input------------------//
 
@@ -104,7 +194,7 @@ int main() {
 	
 //Sliding window size
 	while(slidingWinSize < 1){
-		cout << "Please enter sliding window size: " << endl;
+		cout << "Please enter sliding window size (in bytes): " << endl;
 		cin >> inp;
 		if(readIsInt(inp)){//parse the int
 			slidingWinSize = stoi(inp);
@@ -115,31 +205,31 @@ int main() {
 	}
 	
 //Range of sequence numbers
-	while(seqLower < 1){
-		cout << "Please enter the lower range of sequence numbers: " << endl;
+	while(seqLower < 0){
+		cout << "Please enter the lower bound of the sequence number range: " << endl;
 		cin >> inp;
 		if(readIsInt(inp)){//parse the int
 			seqLower = stoi(inp);
 		}
-		if(seqLower < 1 || !readIsInt(inp)){
+		if(seqLower < 0 || !readIsInt(inp)){
 			cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
-			seqLower = 0;
+			seqLower = -1;
 		}
 	}
 	
-	while(seqUpper < 1){
-		cout << "Please enter the upper range of sequence numbers: " << endl;
+	while(seqUpper < 0){
+		cout << "Please enter the upper bound of sequence number range: " << endl;
 		cin >> inp;
 		if(readIsInt(inp)){//parse the int
 			seqUpper = stoi(inp);
 		}
-		if(seqUpper < 1 || !readIsInt(inp) || seqUpper < seqLower){
+		if(seqUpper < 0 || !readIsInt(inp) || seqUpper < seqLower){
 			cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
 			
 			if(seqUpper < seqLower){
 				cout << "\nPlease enter something greater or equal to " << seqLower << endl << endl;
 			}
-			seqUpper = 0;
+			seqUpper = -1;
 		}
 	}
 	
@@ -286,23 +376,40 @@ int main() {
 			
 			cout << endl;
 		}
+		
+		cout << "-----------------------------------------------------------------------------" << endl;
 	}
 	
-//------------------Build our Packet Header Struct Object------------------//
+//------------------Build our Packet Header Object------------------//
 	
 	
 //------------------Stage the File for Transfer------------------//
+
+	//TODO: Take input file as command line args, we can implement this later. testing might be easier with a hardcode.
+	//cout << "We will be transferring " << argv[1] << " to any and all clients."
+	
+	//https://www.example-code.com/cpp/base64_encode_file.asp
+
 	//load file in..
+	
+	//perhaps we encode the file in base-64? Then, each character is 8 bits and can be appended after recieving.
 	
 	//split file between packet bodies using packet size, taking in account the header size.
 
 	//make a vector containing all packets to be sent 
 	
+	
+//------------------Build all Packets with Body------------------//
+	
 
 //------------------start server functionality------------------//
 
+    boost::asio::io_service io_service;
+
 	while(1){ //loop forever. This will probably have to change and work conditionally.
-	  
+		
+		cout << "Waiting for a connection..." << endl;
+		
 		//Create a listener on specified port
 		tcp::acceptor acceptor_(io_service, tcp::endpoint(tcp::v4(), PORT ));  
 		  
@@ -311,12 +418,20 @@ int main() {
 		  
 		//Wait for a connection and accept when one comes in
 		acceptor_.accept(socket_);  
+		
+		string cli = boost::lexical_cast<string>(socket_.remote_endpoint().address());
+		
+		cout << endl << "Connected!" << endl;
+		cout << "Client opened a connection from " << cli << ":" << PORT << endl << endl;
 		  
 		//Read connection confirmation from client...
 		string message = read_(socket_); 
-		cout << message << endl;  
+		cout << "Client says: " << endl << message << endl;  
+		
+		//TODO: When client is accepted, we should exchange packets as well as a message. We'd want to tell the client which sliding window protocol to use along with header data.
+		//Maybe this should just be sent not as a packet but we just send a string of information to the client before starting anything, given that this is kind of a simulation.
 		  
-		//Now that client is connected, we will call a function that takes the connection and sends the file to it, and recieves and ack. We don't want to send just a string, but that might be useful if we encode the packets to strings
+		//Now that client is connected, we will call a function that takes the connection and sends the file to it, and receives and ack. We don't want to send just a string, but that might be useful if we encode the packets to strings
 		
 		//example send a string as follows	
 			send_(socket_, "we're done. i can't date u. u broke my heart :/");  
@@ -324,11 +439,11 @@ int main() {
 
 			
 		//TODO: Create function and call it to send our packet and whatnot.
-		
+		//sendFile();
 			  
 		//TODO: Maybe add threads for ex credit. it honestly might not be too hard but
 		
-		cout << "Finished processing this one. Listening...";
+		cout << "Finished processing this one." << endl << endl;
 		
 	} //end while. we want to keep this server running until killed server-side. built to serve.
 	
