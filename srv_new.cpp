@@ -23,17 +23,64 @@ namespace pt = boost::property_tree;
 //--------------Define Flags--------------//
 // https://www.geeksforgeeks.org/tcp-flags/
 //If changed, we need to also copy this to client code.
-  const uint8_t IGN = 231; //ignore
+	const uint8_t IGN = 231; //ignore
+	
 	const uint8_t SYN = 0; //Synchronization
+	
 	const uint8_t ACK = 1; //Acknowledgement
+	
 	const uint8_t FIN = 2; //Finish
+	
 	const uint8_t RST = 3; //Reset
+	
 	const uint8_t PSH = 4; //Push
+	
 	const uint8_t URG = 5; //Urgent
 
 	//For sliding window protocol. This will be separate from normal TCP flags.
+	
 	const uint8_t GBN = 6;
-	const uint8_t SR = 7;
+	
+	const uint8_t SLR = 7;
+	
+	
+	std::string getConstStr(uint8_t num){
+		switch(num){
+			case 231:
+				return "IGN";
+				break;
+			case 0:
+				return "SYN";
+				break;
+			case 1:
+				return "ACK";
+				break;
+			case 2:
+				return "FIN";
+				break;
+			case 3:
+				return "RST";
+				break;
+			case 4:
+				return "PSH";
+				break;
+			case 5:
+				return "URG";
+				break;
+			case 6:
+				return "GBN";
+				break;
+			case 7:
+				return "SLR";
+				break;
+			default:
+				return "Empty or invalid..";
+				break;
+		}
+		
+		return "";
+	}
+	
 //---------------------------------------//
 
 
@@ -84,16 +131,59 @@ struct tcp_header {
 
     return ss.str(); //return JSON Header
   }
+  
+  string toString(){
+	  std::string s_port_s = "";
+ 	  std::string d_port_s = "";
+	  std::string seq_num_s = "";
+	  std::string ack_num_s = "";
+	  std::string offset_s = "";
+	  std::string flag_n_s = "";
+	  std::string window_s = "";
+	  std::string checksum_s = "";
+	  
+	  try{
+	  s_port_s = std::to_string(s_port);
+	  d_port_s = std::to_string(d_port);
+	  seq_num_s = std::to_string(seq_num);
+	  ack_num_s = std::to_string(ack_num);
+	  offset_s = std::to_string(offset);
+	  flag_n_s = std::to_string(flag);
+	  window_s = std::to_string(window);
+	  checksum_s = std::to_string(checksum);
+	  } catch (int e){
+		  cout << "bruh. error: " << e << endl;
+	  }
+	  
+	  std::string s = "This packet's Data: \nSender Port: " + s_port_s + " \nDestination Port: " + d_port_s + " \nSequence Number: " + seq_num_s + " \nAcknowledgement Number: " + ack_num_s + " \nData Offset: " + offset_s;
+	  s = s + " \nPacket Flag: " + flag_n_s + "(" + getConstStr(flag) + ") " + " \nWindow Size: " + window_s + " \nChecksum Value: " + checksum_s + " \n";
+	  
+	  return s;
+  }
 
 };
 
-tcp_header data(tcp_header head, string json){
+tcp_header headData(tcp_header head, string json){
+	
+	//Stream the json
+	std::stringstream ss;
+	ss << json;
+	
+	//Load the string into a ptree
 	pt::ptree reader;
-
-	pt::read_json(json, reader);
+	pt::read_json(ss, reader);
 	
+	//Set our data values for header object
 	head.s_port = reader.get<uint16_t>("s_port");
+	head.d_port = reader.get<uint16_t>("d_port");
+	head.seq_num = reader.get<uint32_t>("seq_num");
+	head.ack_num = reader.get<uint32_t>("ack_num");
+	head.offset = reader.get<unsigned int>("offset");
+	head.flag = reader.get<uint8_t>("flag");
+	head.window = reader.get<uint16_t>("window");
+	head.checksum = reader.get<uint16_t>("checksum");
 	
+	//return the head
 	return (head);
 }
 
@@ -101,9 +191,8 @@ tcp_header data(tcp_header head, string json){
 tcp_header readHeader(string hdr){
   tcp_header head;
 
-	head = data(head, hdr);
-  
-  cout << "test_sport: " << head.s_port << endl;
+	head = headData(head, hdr);
+	
   return head;
 }
 
@@ -444,7 +533,7 @@ int main(int argc, char** argv) {
 
 	bool debug = true; //He might want us to do debug output, but I doubt he wants us to do it this way. Temporary so we can see our server configuration.
 	if(debug){
-		cout << endl;
+		cout << endl << "Server Options: " << endl;
 		cout << "Protocol Type: " << proType << endl;
 		cout << "Packet Size: " << packetSize << endl;
 		cout << "Timeout Interval: " << timeout << endl;
@@ -468,7 +557,7 @@ int main(int argc, char** argv) {
 			cout << endl;
 		}
 
-		cout << "-----------------------------------------------------------------------------" << endl;
+		cout << "-----------------------------------------------------------------------------" << endl << endl;
 	}
 
 //------------------Build our Packet Header Object------------------//
@@ -481,9 +570,10 @@ base_header.window = 0; //initialize window size. Probably will have to changed
 base_header.checksum = 0; //initialize checksum
 
 if(debug) {
-  cout << "Header JSON: " << endl << base_header.toJson() << endl << endl;
+  cout << "Header JSON: " << endl << base_header.toJson() << endl;
   
-  readHeader(base_header.toJson());
+  cout << "Header converted from the JSON: " << endl << readHeader(base_header.toJson()).toString() << endl;
+  cout << "-----------------------------------------------------------------------------" << endl << endl;
 }
 
 //------------------Stage the File for Transfer------------------//
