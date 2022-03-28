@@ -87,21 +87,27 @@ struct tcp_header {
 
 };
 
+tcp_header data(tcp_header head, string json){
+	pt::ptree reader;
+
+	pt::read_json(json, reader);
+	
+	head.s_port = reader.get<uint16_t>("s_port");
+	
+	return (head);
+}
+
 //Create a tcp header from json
-struct readHeader(string hdr){
+tcp_header readHeader(string hdr){
   tcp_header head;
-  pt:ptree reader;
 
-  pt::read_json(hdr, reader);
-
-  head.s_port = reader.get()
+	head = data(head, hdr);
+  
+  cout << "test_sport: " << head.s_port << endl;
+  return head;
 }
 
-//create packet from json
-struct readPacket(string pkt){
-
-}
-
+/*
 //TCP Packet Structure
 struct tcp_packet {
 	tcp_header header;
@@ -118,6 +124,29 @@ struct tcp_packet {
     return ss.str(); //return JSON Packet
   }
 };
+
+
+
+tcp_packet packData(tcp_packet pack){
+	pt::ptree reader;
+
+	pt::read_json(pack, reader);
+	
+	pack.header = reader.get<tcp_header>("header");
+	pack.body = reader.get<string>("body");
+	
+	return (pack);
+}
+
+//create packet from json
+tcp_packet readPacket(string pkt){
+	tcp_packet p;
+	p = packData(p);
+	
+	cout << "test pack data, header is " << p.header.toJson() << endl;
+	return p;
+}
+*/
 
 string read_(tcp::socket & socket) {
        boost::asio::streambuf buf;
@@ -149,12 +178,16 @@ string trim(string input){
 
 //Encode a string in base 64
 string b64Encode(string raw){
+string encoded = "";
 
+return encoded;
 }
 
 //Decode a string from base 64
 string b64Decode(string b64){
+string decoded = "";
 
+return decoded;
 }
 
 /*
@@ -449,6 +482,8 @@ base_header.checksum = 0; //initialize checksum
 
 if(debug) {
   cout << "Header JSON: " << endl << base_header.toJson() << endl << endl;
+  
+  readHeader(base_header.toJson());
 }
 
 //------------------Stage the File for Transfer------------------//
