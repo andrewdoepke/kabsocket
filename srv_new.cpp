@@ -19,6 +19,7 @@ const int PORT = 1234; //Simulated port for this program
 namespace pt = boost::property_tree;
 
 typedef std::vector<int> IntVec;
+typedef std::vector<string> StrVec;
 
 const string delim = "\x04\x03\n";
 
@@ -250,18 +251,7 @@ int unpack(string pck_json, tcp_header *head, string *body){
 	}
 }
 
-
-string read_(tcp::socket & socket) {
-       boost::asio::streambuf buf;
-       boost::asio::read_until( socket, buf, delim);
-       string data = boost::asio::buffer_cast<const char*>(buf.data());
-       return data;
-}
-
-void send_(tcp::socket & socket, const string& message) {
-       const string msg = message + delim;
-       boost::asio::write( socket, boost::asio::buffer(msg) );
-}
+typedef std::vector<tcp_packet> PacketStream;
 
 //Validate integer from string
 bool readIsInt(string input){
@@ -277,20 +267,6 @@ string trim(string input){
 	boost::trim_right(input);
 	boost::trim_left(input);
 	return input;
-}
-
-//Encode a string in base 64
-string b64Encode(string raw){
-string encoded = "";
-
-return encoded;
-}
-
-//Decode a string from base 64
-string b64Decode(string b64){
-string decoded = "";
-
-return decoded;
 }
 
 
@@ -686,6 +662,78 @@ srv_options userInput(srv_options server_options){
 	server_options.loseAck = loseAck;
 
 	return server_options;
+} //end user input
+
+//Encode a file in base 64
+string b64EncodeFile(){
+	string encoded = "";
+
+	return encoded;
+}
+
+//Decode a string to a file from base 64
+string b64DecodeFile(string b64){
+	string decoded = "";
+
+	return decoded;
+}
+
+
+//Encode a string in base 64
+string b64Encode(string raw){
+	string encoded = "";
+
+	return encoded;
+}
+
+//Decode a string to a string from base 64
+string b64Decode(string b64){
+	string decoded = "";
+
+	return decoded;
+}
+
+//Highest level.
+//This will load the file in, split it into packets bodies given the packet size, and return a vector of packets
+//The packet headers can then be modified based on tcp runtime
+PacketStream stageFile(int packetSize) {
+	string encoded = b64EncodeFile(); //Encode the file
+	PacketStream out;
+
+	//TODO: Split the string based on packet size
+
+	//TODO: Populate tcp_packets in a PacketStream (custom typedef = vector<tcp_packet>)
+		//Set each packet body with the split string. Final packet will have less data.
+
+	return out; //return the data
+}
+
+//Batch convert a PacketStream(Vector<tcp_packet>) to a StrVec(Vector<string>) containing json for each packet
+//we might need this
+StrVec convert_PacketStream_StrVec(PacketStream packets){
+	StrVec out;
+
+	for (tcp_packet p : packets){
+		out.push_back(p.toJson());
+	}
+
+	return out;
+}
+
+//----------------------------SERVER----------------------------//
+
+//Read a string from a socket until it hits our delim
+string read_(tcp::socket & socket) {
+       boost::asio::streambuf buf;
+       boost::asio::read_until( socket, buf, delim);
+       string data = boost::asio::buffer_cast<const char*>(buf.data());
+       return data;
+}
+
+//Send a string over the socket, ending with the delim
+void send_(tcp::socket & socket, const string& message) {
+       const string msg = message + delim;
+       boost::asio::write( socket, boost::asio::buffer(msg) );
 }
 
 
@@ -714,27 +762,30 @@ tcp::socket connect() {
 //Perform server functions on passed socket.This will probably be the bulk of everything.
 int operate(tcp::socket socket_, srv_options srvOp){
 
-		//Read connection confirmation from client...
+		//Call stageFile()
+
+		//This is the basic read, we'll get rid of this eventually.
 		string message = read_(socket_);
 		cout << "Client says: " << endl << message << endl;
 
-		//TODO: When client is accepted, we should exchange packets as well as a message. We'd want to tell the client which sliding window protocol to use along with header data.
-		//Maybe this should just be sent not as a packet but we just send a string of information to the client before starting anything, given that this is kind of a simulation.
-
 		//Now that client is connected, we will call a function that takes the connection and sends the file to it, and receives and ack. We don't want to send just a string, but that might be useful if we encode the packets to strings
 
-		//example send a string as follows
+		//example send a string as follows. We'll get rid of this
 		send_(socket_, "we're done. i can't date u. u broke my heart :(");
 		cout << "Responded to the client." << endl;
 
+		//Send the server's configuration to the client. The client will use this to determine error checking and sliding window, and perhaps something I'm not seeing
 		string srvConfJson = srvOp.toJson();
 
+		//probably cout this in debug level instead of in main output.
 		cout << "Sending Server Config" << endl;
-		send_(socket_, srvConfJson);
+		send_(socket_, srvConfJson); //sends the json of the srvConf
 		cout << "Sent!" << endl;
 
-		//TODO: Create function and call it to send our packet and whatnot.
-		//sendFile();
+		//TODO: Now we should enter the main loop for this specific operation
+
+			//Start off by sending a SYN packet to the client, and wait for the client to send back SYN followed by ACK. These packets can have empty data.
+			//After we receive the ACK
 
 		//TODO: Maybe add threads for ex credit. it honestly might not be too hard but
 
