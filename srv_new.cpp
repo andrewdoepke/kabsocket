@@ -18,32 +18,26 @@ const int PORT = 1234; //Simulated port for this program
 
 namespace pt = boost::property_tree;
 
+typedef std::vector<int> IntVec;
 
+const string delim = "\x04\x03\n";
 
 //--------------Define Flags--------------//
 // https://www.geeksforgeeks.org/tcp-flags/
 //If changed, we need to also copy this to client code.
 	const uint8_t IGN = 231; //ignore
-	
 	const uint8_t SYN = 0; //Synchronization
-	
 	const uint8_t ACK = 1; //Acknowledgement
-	
 	const uint8_t FIN = 2; //Finish
-	
 	const uint8_t RST = 3; //Reset
-	
 	const uint8_t PSH = 4; //Push
-	
 	const uint8_t URG = 5; //Urgent
-
+	
 	//For sliding window protocol. This will be separate from normal TCP flags.
-	
 	const uint8_t GBN = 6;
-	
 	const uint8_t SLR = 7;
 	
-	
+	//Associate strings with the numbers
 	std::string getConstStr(uint8_t num){
 		switch(num){
 			case 231:
@@ -115,54 +109,59 @@ struct tcp_header {
 
 	//uint8_t sw_prot; //Type of sliding window protocol used. Can either be GBN or SR
 
-  string toJson(){
-    pt::ptree pkt;
-    pkt.put("s_port", s_port);
-    pkt.put("d_port", d_port);
-    pkt.put("seq_num", seq_num);
-    pkt.put("ack_num", ack_num);
-    pkt.put("offset", offset);
-    pkt.put("flag", flag);
-    pkt.put("window", window);
-    pkt.put("checksum", checksum);
+	//to JSON function of a tcp_header
+	std::string toJson(){ 
+		pt::ptree pkt;
+		pkt.put("s_port", s_port);
+		pkt.put("d_port", d_port);
+		pkt.put("seq_num", seq_num);
+		pkt.put("ack_num", ack_num);
+		pkt.put("offset", offset);
+		pkt.put("flag", flag);
+		pkt.put("window", window);
+		pkt.put("checksum", checksum);
 
-    std::stringstream ss;
-    pt::json_parser::write_json(ss, pkt);
+		std::stringstream ss;
+		pt::json_parser::write_json(ss, pkt);
 
-    return ss.str(); //return JSON Header
-  }
-  
-  string toString(){
-	  std::string s_port_s = "";
- 	  std::string d_port_s = "";
-	  std::string seq_num_s = "";
-	  std::string ack_num_s = "";
-	  std::string offset_s = "";
-	  std::string flag_n_s = "";
-	  std::string window_s = "";
-	  std::string checksum_s = "";
-	  
-	  try{
-	  s_port_s = std::to_string(s_port);
-	  d_port_s = std::to_string(d_port);
-	  seq_num_s = std::to_string(seq_num);
-	  ack_num_s = std::to_string(ack_num);
-	  offset_s = std::to_string(offset);
-	  flag_n_s = std::to_string(flag);
-	  window_s = std::to_string(window);
-	  checksum_s = std::to_string(checksum);
-	  } catch (int e){
-		  cout << "bruh. error: " << e << endl;
-	  }
-	  
-	  std::string s = "This packet's Data: \nSender Port: " + s_port_s + " \nDestination Port: " + d_port_s + " \nSequence Number: " + seq_num_s + " \nAcknowledgement Number: " + ack_num_s + " \nData Offset: " + offset_s;
-	  s = s + " \nPacket Flag: " + flag_n_s + "(" + getConstStr(flag) + ") " + " \nWindow Size: " + window_s + " \nChecksum Value: " + checksum_s + " \n";
-	  
-	  return s;
+		return ss.str(); //return JSON Header
+	}
+	
+	//to String function of a tcp_header
+	std::string toString(){ 
+		std::string s_port_s = "";
+		std::string d_port_s = "";
+		std::string seq_num_s = "";
+		std::string ack_num_s = "";
+		std::string offset_s = "";
+		std::string flag_n_s = "";
+		std::string window_s = "";
+		std::string checksum_s = "";
+		
+		//toString for all numbers!
+		try{
+			s_port_s = std::to_string(s_port);
+			d_port_s = std::to_string(d_port);
+			seq_num_s = std::to_string(seq_num);
+			ack_num_s = std::to_string(ack_num);
+			offset_s = std::to_string(offset);
+			flag_n_s = std::to_string(flag);
+			window_s = std::to_string(window);
+			checksum_s = std::to_string(checksum);
+		} catch (int e){
+			cout << "bruh. error: " << e << endl;
+		}
+		
+		//build string and return
+		std::string s = "Sender Port: " + s_port_s + " \nDestination Port: " + d_port_s + " \nSequence Number: " + seq_num_s + " \nAcknowledgement Number: " + ack_num_s + " \nData Offset: " + offset_s;
+		s = s + " \nPacket Flag: " + flag_n_s + "(" + getConstStr(flag) + ") " + " \nWindow Size: " + window_s + " \nChecksum Value: " + checksum_s + " \n";
+
+		return s;
   }
 
 };
 
+//Populates head object from a JSON. Used by readHeader
 tcp_header headData(tcp_header head, string json){
 	
 	//Stream the json
@@ -187,7 +186,7 @@ tcp_header headData(tcp_header head, string json){
 	return (head);
 }
 
-//Create a tcp header from json
+//Create a tcp header from json. Returns a tcp_header object
 tcp_header readHeader(string hdr){
   tcp_header head;
 
@@ -196,57 +195,84 @@ tcp_header readHeader(string hdr){
   return head;
 }
 
-/*
+
 //TCP Packet Structure
 struct tcp_packet {
-	tcp_header header;
+	string header; //json of header
 	string body;
+	
+	//Converts TCP Packet to a JSON containing string data and header JSON
+	string toJson(){
+		pt::ptree pkt;
+		pkt.put("header", header);
+		pkt.put("body", body);
 
-  string toJson(){
-    pt::ptree pkt;
-    pkt.put("header", header.toJson());
-    pkt.put("body", body);
+		std::stringstream ss;
+		pt::json_parser::write_json(ss, pkt);
 
-    std::stringstream ss;
-    pt::json_parser::write_json(ss, pkt);
-
-    return ss.str(); //return JSON Packet
-  }
+		return ss.str(); //return JSON Packet
+	}
+  
+	//toString for a packet. returns the header's toString as well as the string body
+	string toString(){
+		string s;
+		s = "Header: \n\n" + readHeader(header).toString();
+		s = s + " \nBody: " + body + "\n";
+		return s;
+	}
 };
 
 
-
-tcp_packet packData(tcp_packet pack){
-	pt::ptree reader;
-
-	pt::read_json(pack, reader);
+//Build a tcp_packet from json. Used by readPacket
+tcp_packet packData(tcp_packet pack, string json){
 	
-	pack.header = reader.get<tcp_header>("header");
+	//Stream the json
+	std::stringstream ss;
+	ss << json;
+	
+	pt::ptree reader;
+	pt::read_json(ss, reader);
+	
+	pack.header = reader.get<string>("header");
 	pack.body = reader.get<string>("body");
 	
 	return (pack);
 }
 
-//create packet from json
+//To read a full packet: header==> tcp_header p; string packet_json; p = readHeader(readPacket(packet_json).header);
+
+//create packet from json. Returns a tcp_packet object to unpack
 tcp_packet readPacket(string pkt){
 	tcp_packet p;
-	p = packData(p);
+	p = packData(p, pkt);
 	
-	cout << "test pack data, header is " << p.header.toJson() << endl;
 	return p;
 }
-*/
+
+//Unpacks a packet from json and populates data for the passed in head and body pointers
+int unpack(string pck_json, tcp_header *head, string *body){
+	try{
+		tcp_packet pck = readPacket(pck_json);
+		*head = readHeader(pck.header);
+		*body = pck.body;
+		return 0;
+	} catch (int e) {
+		cout << "Bruh Moment. Something broke: " << e << endl;
+		return 1;
+	}
+}
+
 
 string read_(tcp::socket & socket) {
        boost::asio::streambuf buf;
-       boost::asio::read_until( socket, buf, "\n" );
+       boost::asio::read_until( socket, buf, delim);
        string data = boost::asio::buffer_cast<const char*>(buf.data());
        return data;
 }
 
 void send_(tcp::socket & socket, const string& message) {
-       const string msg = message + "\n";
-       boost::asio::write( socket, boost::asio::buffer(message) );
+       const string msg = message + delim;
+       boost::asio::write( socket, boost::asio::buffer(msg) );
 }
 
 //Validate integer from string
@@ -308,7 +334,256 @@ int getSeqNum(int last, int upper, int lower) {
 
 }
 
+/* async stuff i guess
+class tcp_server {
+	public:
+		tcp_server(boost::asio::io_service& io_service) : acceptor_(io_service, tcp::endpoint(tcp::v4(), PORT)) {
+			start_accept();
+		}
+  
+  private:
+	void start_accept() {
+		
+		tcp_connection::pointer new_connection =
+		tcp_connection::create(acceptor_.io_service());
 
+		acceptor_.async_accept(new_connection->socket(),
+			boost::bind(&tcp_server::handle_accept, this, new_connection,
+			  boost::asio::placeholders::error));
+		}
+		
+	void handle_accept(tcp_connection::pointer new_connection, const boost::system::error_code& error) {
+		if (!error) {
+		  new_connection->start();
+		  start_accept();
+		}
+	}
+}
+
+class tcp_connection : public boost::enable_shared_from_this<tcp_connection> {
+	public:
+		typedef boost::shared_ptr<tcp_connection> pointer;
+		
+		static pointer create(boost::asio::io_service& io_service) {
+			return pointer(new tcp_connection(io_service));
+		}
+		
+		tcp::socket& socket() {
+			return socket_;
+		}
+		
+		void start() {
+			message_ = make_daytime_string();
+			
+			boost::asio::async_write(socket_, boost::asio::buffer(message_),
+			boost::bind(&tcp_connection::handle_write, shared_from_this(),
+			boost::asio::placeholders::error,
+			boost::asio::placeholders::bytes_transferred));
+		
+		}
+	private:
+		tcp_connection(boost::asio::io_service& io_service) : socket_(io_service) {
+			
+		
+		}
+
+		void handle_write(const boost::system::error_code&, size_t) {
+		}
+
+		tcp::socket socket_;
+		std::string message_;
+};*/
+
+struct srv_options {
+	
+	int proType;
+	int packetSize;
+	int timeout;
+	int slidingWinSize;
+	int seqLower;
+	int seqUpper;
+	int sitErrorInp;
+	IntVec dropPacket;
+	IntVec loseAck;
+	
+	//Converts server options to a JSON
+	string toJson(){
+		pt::ptree pkt;
+		pkt.put("proType", proType);
+		pkt.put("packetSize", packetSize);
+		pkt.put("timeout", timeout);
+		pkt.put("slidingWinSize", slidingWinSize);
+		pkt.put("seqLower", seqLower);
+		pkt.put("seqUpper", seqUpper);
+		pkt.put("sitErrorInp", sitErrorInp);
+		
+		pt::ptree dropPacketArr;
+		int j = 0;
+					
+		for(int i : dropPacket){
+			pt::ptree element;
+			element.put(std::to_string(j), i);
+			dropPacketArr.push_back(pt::ptree::value_type("", element));
+			j++;
+		}
+		
+		pkt.put_child("dropPacket", dropPacketArr);
+		
+		
+		pt::ptree loseAckArr;
+		j = 0;
+					
+		for(int i : loseAck){
+			pt::ptree element2;
+			element2.put(std::to_string(j), i);
+			dropPacketArr.push_back(pt::ptree::value_type("", element2));
+			j++;
+		}
+		
+		pkt.put_child("loseAck", loseAckArr);
+
+		std::stringstream ss;
+		pt::json_parser::write_json(ss, pkt);
+
+		return ss.str(); //return JSON Options
+	}
+	
+	string toString(){
+		string c = "Server Options: \n\nProtocol Type: " + std::to_string(proType) + " \nPacket Size: " + std::to_string(packetSize) + " \nTimeout Interval: " + std::to_string(timeout) + " \nSliding Window Size: " + std::to_string(slidingWinSize);
+		c = c + " \nSequence Range: " + std::to_string(seqLower) + " to " + std::to_string(seqUpper) + " inclusive." + " \nType of Situational Error: " + std::to_string(sitErrorInp) + "\n\n";
+		
+		
+		if(sitErrorInp == 3) {
+			c = c + "Packet numbers to be lost: ";
+			for(int n : dropPacket){
+				c = c + "" + std::to_string(n) + " ";
+			}
+
+			c = c + "\n";
+
+			c = c + "Ack numbers to be lost: ";
+			for(int n : loseAck) {
+				c = c + "" + std::to_string(n) + " ";
+			}
+
+			c = c + "\n";
+		}
+		
+		
+		return c;
+	}
+	
+}; //end struct
+
+//Build server options from json. Used by readSrvOp
+srv_options srvOpData(srv_options srv, std::string json){
+	
+	//Stream the json
+	std::stringstream ss;
+	ss << json;
+	
+	pt::ptree reader;
+	pt::read_json(ss, reader);
+	
+	srv.proType = reader.get<int>("proType");
+	srv.packetSize = reader.get<int>("packetSize");
+	srv.timeout = reader.get<int>("timeout");
+	srv.slidingWinSize = reader.get<int>("slidingWinSize");
+	srv.seqLower = reader.get<int>("seqLower");
+	srv.seqUpper = reader.get<int>("seqUpper");
+	srv.sitErrorInp = reader.get<int>("sitErrorInp");
+	
+	IntVec dropP;
+	
+	pt::ptree &array = reader.get_child("dropPacket");
+	int j = 0;
+	for(pt::ptree::iterator element = array.begin(); element != array.end(); element++){
+		dropP.push_back(element->second.get<int>(std::to_string(j)));
+		j++;
+	}
+	
+	srv.dropPacket = dropP;
+	
+	
+	IntVec loseA;
+	
+	pt::ptree &array2 = reader.get_child("dropPacket");
+	j = 0;
+	for(pt::ptree::iterator element = array2.begin(); element != array2.end(); element++){
+		loseA.push_back(element->second.get<int>(std::to_string(j)));
+		j++;
+	}
+	
+	srv.loseAck = loseA;
+	
+	
+	return (srv);
+}
+
+//create srv options struct from json
+srv_options readSrvOp(string srv) {
+	srv_options s;
+	s = srvOpData(s, srv);
+	
+	return s;
+}
+
+
+//Waits for a connection and returns the socket once connected
+tcp::socket connect() {
+	boost::asio::io_service io_service;
+	cout << "Waiting for a connection..." << endl;
+		
+	//Create a listener on specified port
+	tcp::acceptor acceptor_(io_service, tcp::endpoint(tcp::v4(), PORT ));
+
+	//Create a tcp socket
+	tcp::socket socket_(io_service);
+
+	//Wait for a connection and accept when one comes in
+	acceptor_.accept(socket_);
+
+	string cli = boost::lexical_cast<string>(socket_.remote_endpoint().address());
+
+	cout << endl << "Connected!" << endl;
+	cout << "Client opened a connection from " << cli << ":" << PORT << endl << endl;
+	
+	return std::move (socket_);
+}
+
+//Perform server functions on passed socket.This will probably be the bulk of everything.
+int operate(tcp::socket socket_, srv_options srvOp){
+		
+		//Read connection confirmation from client...
+		string message = read_(socket_);
+		cout << "Client says: " << endl << message << endl;
+
+		//TODO: When client is accepted, we should exchange packets as well as a message. We'd want to tell the client which sliding window protocol to use along with header data.
+		//Maybe this should just be sent not as a packet but we just send a string of information to the client before starting anything, given that this is kind of a simulation.
+
+		//Now that client is connected, we will call a function that takes the connection and sends the file to it, and receives and ack. We don't want to send just a string, but that might be useful if we encode the packets to strings
+
+		//example send a string as follows
+		send_(socket_, "we're done. i can't date u. u broke my heart :(");
+		cout << "Responded to the client." << endl;
+		
+		string srvConfJson = srvOp.toJson();
+		
+		cout << "Sending Server Config" << endl;
+		send_(socket_, srvConfJson);
+		cout << "Sent!" << endl;
+
+		//TODO: Create function and call it to send our packet and whatnot.
+		//sendFile();
+
+		//TODO: Maybe add threads for ex credit. it honestly might not be too hard but
+
+		cout << "Finished processing this one." << endl << endl;
+		socket_.close();
+		return 0;
+} //End Operate
+
+//------------------------------------------------------------------------------------Begin Main------------------------------------------------------------------------------------//
 int main(int argc, char** argv) {
 
 	int proType = 0;
@@ -528,52 +803,68 @@ int main(int argc, char** argv) {
 	//at this point all values are loaded, and we can test in runtime for packets/acks sent to determine whether or not a packet/ack should be an error, if it gets to that packet/ack
 	//if(pCnt = loseAck[ackCnt]) {... ackCnt++;}
 	//if(pCnt = dropPacket[dropCnt]) {... dropCnt++;}
-
+	
+	
+	//Create Struct with all of this!
+	srv_options server_options;
+	
+	server_options.proType = proType;
+	server_options.packetSize = packetSize;
+	server_options.timeout = timeout;
+	server_options.slidingWinSize = slidingWinSize;
+	server_options.seqLower = seqLower;
+	server_options.seqUpper = seqUpper;
+	server_options.sitErrorInp = sitErrorInp;
+	server_options.dropPacket = dropPacket;
+	server_options.loseAck = loseAck;
 
 
 	bool debug = true; //He might want us to do debug output, but I doubt he wants us to do it this way. Temporary so we can see our server configuration.
 	if(debug){
-		cout << endl << "Server Options: " << endl;
-		cout << "Protocol Type: " << proType << endl;
-		cout << "Packet Size: " << packetSize << endl;
-		cout << "Timeout Interval: " << timeout << endl;
-		cout << "Sliding Window Size: " << slidingWinSize << endl;
-		cout << "Sequence Range: " << seqLower << " to " << seqUpper << " inclusive." << endl << endl;
-		cout << "Type of Situational Error: " << sitErrorInp << endl;
 
-		if(sitErrorInp == 3) {
-			cout << "Packet numbers to be lost: ";
-			for(int n : dropPacket){
-				cout << n << " ";
-			}
-
-			cout << endl;
-
-			cout << "Ack numbers to be lost: ";
-			for(int n : loseAck) {
-				cout << n << " ";
-			}
-
-			cout << endl;
-		}
-
+		cout << endl << endl << server_options.toString() << endl;
 		cout << "-----------------------------------------------------------------------------" << endl << endl;
 	}
 
 //------------------Build our Packet Header Object------------------//
-tcp_header base_header;
+
+tcp_header base_header; //base header to start out with!
 base_header.seq_num = genSeqNum(seqLower, seqUpper); //generate first seq number
 base_header.ack_num = 1; //initialize ack num
 base_header.offset = 0; //initialize offset
 base_header.flag = IGN; //default flag to ignore
-base_header.window = 0; //initialize window size. Probably will have to changed
+base_header.window = slidingWinSize; //initialize window size. Probably will have to changed
 base_header.checksum = 0; //initialize checksum
 
+//Tests!!!
 if(debug) {
   cout << "Header JSON: " << endl << base_header.toJson() << endl;
   
   cout << "Header converted from the JSON: " << endl << readHeader(base_header.toJson()).toString() << endl;
+  
+  //Test Packet Whole!
+  tcp_packet pack;
+  pack.header = base_header.toJson();
+  pack.body = "Test!";
+  
+  cout << "Packet JSON: " << endl << endl << pack.toJson() << endl;
+  
+  cout << "Packet converted from the JSON: " << endl << readPacket(pack.toJson()).toString() << endl;
+
+	//test unpack 
+	cout << "Unpacking current packet from JSON.." << endl;
+	tcp_header head2;
+	string body2;
+	unpack(pack.toJson(), &head2, &body2);
+	
+	tcp_packet pack2;
+	pack2.header = head2.toJson();
+	pack2.body = body2;
+	
+	cout << "Unpacked. \n\nPacket data: " << endl << pack2.toString() << endl;
+  
   cout << "-----------------------------------------------------------------------------" << endl << endl;
+  
 }
 
 //------------------Stage the File for Transfer------------------//
@@ -600,44 +891,17 @@ if(debug) {
     boost::asio::io_service io_service;
 
 	while(1){ //loop forever. This will probably have to change and work conditionally.
-
-		cout << "Waiting for a connection..." << endl;
-
-		//Create a listener on specified port
-		tcp::acceptor acceptor_(io_service, tcp::endpoint(tcp::v4(), PORT ));
-
-		//Create a tcp socket
-		tcp::socket socket_(io_service);
-
-		//Wait for a connection and accept when one comes in
-		acceptor_.accept(socket_);
-
-		string cli = boost::lexical_cast<string>(socket_.remote_endpoint().address());
-
-		cout << endl << "Connected!" << endl;
-		cout << "Client opened a connection from " << cli << ":" << PORT << endl << endl;
-
-		//Read connection confirmation from client...
-		string message = read_(socket_);
-		cout << "Client says: " << endl << message << endl;
-
-		//TODO: When client is accepted, we should exchange packets as well as a message. We'd want to tell the client which sliding window protocol to use along with header data.
-		//Maybe this should just be sent not as a packet but we just send a string of information to the client before starting anything, given that this is kind of a simulation.
-
-		//Now that client is connected, we will call a function that takes the connection and sends the file to it, and receives and ack. We don't want to send just a string, but that might be useful if we encode the packets to strings
-
-		//example send a string as follows
-			send_(socket_, "we're done. i can't date u. u broke my heart :/");
-			cout << "Responded to the client." << endl;
-
-
-		//TODO: Create function and call it to send our packet and whatnot.
-		//sendFile();
-
-		//TODO: Maybe add threads for ex credit. it honestly might not be too hard but
-
-		cout << "Finished processing this one." << endl << endl;
-
+		
+		/* async stuff ignore for now
+		  try {
+			  tcp_server server(io_service);
+		  } catch (std::exception& e) {
+			  std::cerr << e.what() << endl;
+		  }
+		*/
+		
+		operate(connect(), server_options); //Creates a new connection and does the functionality on it
+		
 	} //end while. we want to keep this server running until killed server-side. built to serve.
 
 	return 0;
