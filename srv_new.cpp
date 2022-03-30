@@ -5,7 +5,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <random>
-
+#include "base64.h"
 
 using namespace boost::asio;
 using ip::tcp;
@@ -664,9 +664,37 @@ srv_options userInput(srv_options server_options){
 	return server_options;
 } //end user input
 
+//Found this code to load binary from a file
+std::vector<char> readBinaryFile(string fPath) {
+  std::ifstream in(fPath, std::ios::binary);
+  in.seekg(0, std::ios::end);
+  int iSize = in.tellg();
+  in.seekg(0, std::ios::beg);
+
+  std::vector<char> pBuff(iSize);
+  if ( iSize > 0 )
+      in.read(&pBuff[0], iSize);
+  in.close();
+
+	return pBuff;
+}
+
+std::string binToString(std::vector<char> pBuff){
+	std::string out(pBuff.begin(), pBuff.end());
+	return out;
+}
+
 //Encode a file in base 64
-string b64EncodeFile(){
+string b64EncodeFile(string fPath){
 	string encoded = "";
+
+	std::vector<char> raw = readBinaryFile(fPath);
+
+	string mid = binToString(raw);
+	cout << "Mid: " << mid << endl;
+
+	encoded = base64_encode(mid);
+	cout << "Encoded " << encoded << endl;
 
 	return encoded;
 }
@@ -689,7 +717,7 @@ string b64Encode(string raw){
 //Decode a string to a string from base 64
 string b64Decode(string b64){
 	string decoded = "";
-
+	decoded = base64_decode(b64);
 	return decoded;
 }
 
@@ -697,7 +725,7 @@ string b64Decode(string b64){
 //This will load the file in, split it into packets bodies given the packet size, and return a vector of packets
 //The packet headers can then be modified based on tcp runtime
 PacketStream stageFile(int packetSize) {
-	string encoded = b64EncodeFile(); //Encode the file
+	//string encoded = b64EncodeFile(); //Encode the file
 	PacketStream out;
 
 	//TODO: Split the string based on packet size
@@ -796,6 +824,11 @@ int operate(tcp::socket socket_, srv_options srvOp){
 
 //------------------------------------------------------------------------------------Begin Main------------------------------------------------------------------------------------//
 int main(int argc, char** argv) {
+
+	cout << "Test B64 Encode File" << endl;
+	string encoded = b64EncodeFile("hi.txt");
+	string decoded = b64Decode(encoded);
+	cout << "Decoding this: " << decoded << endl;
 
 	//Take user input
 	srv_options srvOp;

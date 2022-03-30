@@ -5,7 +5,7 @@ all:
 	make client
 
 server:
-	g++ srv_new.cpp -o server -lboost_system -lpthread
+	g++ srv_new.cpp base64.cpp -o server -lboost_system -lpthread
 
 client:
 	g++ cli_new.cpp -o client -lboost_system -lpthread
