@@ -13,6 +13,8 @@ using std::string;
 using std::cout;
 using std::cin;
 using std::endl;
+using std::ios;
+using std::ofstream;
 
 const int PORT = 1234; //Simulated port for this program
 
@@ -694,25 +696,43 @@ string b64EncodeFile(string fPath){
 	cout << "Mid: " << mid << endl;
 
 	encoded = base64_encode(mid);
-	cout << "Encoded " << encoded << endl;
+	cout << "Encoded: " << endl << encoded << endl;
 
 	return encoded;
 }
 
-//Decode a string to a file from base 64
-string b64DecodeFile(string b64){
-	string decoded = "";
-
-	return decoded;
+//Write to a file from base 64
+int writeFile(const string& b64, string fPath){
+	try {
+		string decoded = "";
+		
+		ofstream outfile;
+		outfile.open(fPath, ios::binary);
+		
+		decoded = base64_decode(b64);
+		
+		outfile.write(decoded.c_str(), decoded.size());
+		outfile.close();
+		
+		cout << "Successfully saved the file to: " << fPath << endl;
+		return 0;
+	} catch(int e){
+		cout << "Uh oh! Error code:" << e << endl;
+		return e;
+	}
 }
 
-
+//About below.. Just call base64_encode(>|<std::strang <tan>>|><___><)__0_+___; same with decode.
+/*
 //Encode a string in base 64
 string b64Encode(string raw){
 	string encoded = "";
+	
+	encoded = base64_encode(raw);
 
 	return encoded;
 }
+
 
 //Decode a string to a string from base 64
 string b64Decode(string b64){
@@ -720,6 +740,8 @@ string b64Decode(string b64){
 	decoded = base64_decode(b64);
 	return decoded;
 }
+*/
+
 
 //Highest level.
 //This will load the file in, split it into packets bodies given the packet size, and return a vector of packets
@@ -827,8 +849,11 @@ int main(int argc, char** argv) {
 
 	cout << "Test B64 Encode File" << endl;
 	string encoded = b64EncodeFile("hi.txt");
-	string decoded = b64Decode(encoded);
-	cout << "Decoding this: " << decoded << endl;
+	string decoded = base64_decode(encoded);
+	cout << "Decoding this: " << endl << decoded << endl;
+	
+	cout << "Testing, loading the file data again and copying to a new file thru b64! New file path: 'elpat.txt'" << endl;
+	writeFile(b64EncodeFile("hi.txt"), "elpat.txt");
 
 	//Take user input
 	srv_options srvOp;
