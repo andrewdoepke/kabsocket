@@ -23,7 +23,7 @@ namespace pt = boost::property_tree;
 typedef std::vector<int> IntVec;
 typedef std::vector<string> StrVec;
 
-const string delim = "\x04\x03\n";
+const string delim = "\x04\x03";
 
 //--------------Define Flags--------------//
 // https://www.geeksforgeeks.org/tcp-flags/
@@ -693,10 +693,8 @@ string b64EncodeFile(string fPath){
 	std::vector<char> raw = readBinaryFile(fPath);
 
 	string mid = binToString(raw);
-	cout << "Mid: " << mid << endl;
 
 	encoded = base64_encode(mid);
-	cout << "Encoded: " << endl << encoded << endl;
 
 	return encoded;
 }
@@ -777,19 +775,38 @@ string read_(tcp::socket & socket) {
        boost::asio::streambuf buf;
        boost::asio::read_until( socket, buf, delim);
        string data = boost::asio::buffer_cast<const char*>(buf.data());
+	   
+	   data.pop_back();
+	   data.pop_back();
+	   
+	   //decode data
+	   data = base64_decode(data);
+	   
        return data;
 }
 
 //Send a string over the socket, ending with the delim
 void send_(tcp::socket & socket, const string& message) {
-       const string msg = message + delim;
-       boost::asio::write( socket, boost::asio::buffer(msg) );
+       const string data = base64_encode(message) + delim;
+	   
+	   cout << "\nMessage: " << endl << data << endl << endl;
+	   
+       boost::asio::write( socket, boost::asio::buffer(data) );
+}
+
+std::string pack(tcp_header *head, string *bod) {
+	tcp_packet packs;
+	tcp_header h;
+	h = *head;
+	packs.header = h.toJson();
+	packs.body = *bod;
+	
+	return packs.toJson();
 }
 
 
 //Waits for a connection and returns the socket once connected
-tcp::socket connect() {
-	boost::asio::io_service io_service;
+tcp::socket connect(boost::asio::io_service & io_service) {
 	cout << "Waiting for a connection..." << endl;
 
 	//Create a listener on specified port
@@ -811,6 +828,7 @@ tcp::socket connect() {
 
 //Perform server functions on passed socket.This will probably be the bulk of everything.
 int operate(tcp::socket socket_, srv_options srvOp){
+	
 
 		//Call stageFile()
 
@@ -831,6 +849,26 @@ int operate(tcp::socket socket_, srv_options srvOp){
 		cout << "Sending Server Config" << endl;
 		send_(socket_, srvConfJson); //sends the json of the srvConf
 		cout << "Sent!" << endl;
+		
+		//------------------Build our Packet Header Object------------------//
+
+		tcp_header base_header; //base header to start out with!
+		base_header.seq_num = genSeqNum(srvOp.seqLower, srvOp.seqUpper); //generate first seq number
+		base_header.ack_num = 1; //initialize ack num
+		base_header.offset = 0; //initialize offset
+		base_header.flag = IGN; //default flag to ignore
+		base_header.window = srvOp.slidingWinSize; //initialize window size. Probably will have to changed
+		base_header.checksum = 0; //initialize checksum
+		
+		//Test! 
+		cout << "Testing a test file." << endl;
+		tcp_packet packer;
+		packer.header = base_header.toJson();
+		packer.body = b64EncodeFile("test.png");
+		send_(socket_, packer.toJson());
+	
+		
+		
 
 		//TODO: Now we should enter the main loop for this specific operation
 
@@ -840,7 +878,6 @@ int operate(tcp::socket socket_, srv_options srvOp){
 		//TODO: Maybe add threads for ex credit. it honestly might not be too hard but
 
 		cout << "Finished processing this one." << endl << endl;
-		socket_.close();
 		return 0;
 } //End Operate
 
@@ -932,7 +969,7 @@ if(debug) {
 
 	while(1){ //loop forever. This will probably have to change and work conditionally. Probably catch a signal or smth idk.
 
-		operate(connect(), srvOp); //Creates a new connection and does the functionality on it
+		operate(connect(io_service), srvOp); //Creates a new connection and does the functionality on it
 		//connect() moves the socket, so we move it to the operate() function, and give it our server options
 
 	} //end while. we want to keep this server running until killed server-side. built to serve.
