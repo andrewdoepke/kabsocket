@@ -23,7 +23,7 @@ namespace pt = boost::property_tree;
 
 typedef std::vector<int> IntVec;
 
-const string delim = "\x04\x03";
+const char delim = '\x04';
 
 //--------------Define Flags--------------//
 // https://www.geeksforgeeks.org/tcp-flags/
@@ -465,17 +465,27 @@ string b64EncodeFile(string fPath){
 	return encoded;
 }
 
-//Write to a file from base 64
-int writeFile(const string& b64, string fPath){
+//Write to a file. Will change this to take a vector of strings
+int writeFile(PacketStream *packets, string fPath){
 	try {
-		string decoded = "";
-		
+		cout << "Writing file..." << endl;
 		ofstream outfile;
-		outfile.open(fPath, ios::binary);
+		outfile.open(fPath, ios::out | ios::binary);
 		
-		decoded = base64_decode(b64);
+
+		std::vector<char> file;
+		std::string t_bod = "";
 		
-		outfile.write(decoded.c_str(), decoded.size());
+		for(tcp_packet p : *packets){
+			t_bod = p.body;
+			for(char c : t_bod){
+				file.push_back(c);
+			}
+		}
+		
+		
+		outfile.write (&file[0], file.size());
+		
 		outfile.close();
 		
 		cout << "Successfully saved the file to: " << fPath << endl;
@@ -490,9 +500,8 @@ int writeFile(const string& b64, string fPath){
 string read_(tcp::socket & socket, boost::asio::streambuf & receive_buffer) {
 
 		std::string fin = "";
-		//const char* data = "";
 		boost::system::error_code error;
-		//boost::asio::streambuf receive_buffer;
+
 		std::string data;
 		
 		boost:asio:read_until(socket, receive_buffer, delim, error);
@@ -509,7 +518,7 @@ string read_(tcp::socket & socket, boost::asio::streambuf & receive_buffer) {
 			
 		}
 		
-	fin.pop_back(); //remove eto
+	//fin.pop_back(); //remove eto
 	fin.pop_back(); //remove etx
 	
 	fin = base64_decode(fin);
@@ -523,7 +532,8 @@ void send_(tcp::socket & socket, const string& message) {
     boost::asio::write( socket, boost::asio::buffer(msg), error );
 	
     if( !error ) {
-       cout << "Sent!" << endl;
+       //cout << "Sent: " << message << endl;
+	   cout << "Sent." << endl;
     }
     else {
        cout << "send failed: " << error.message() << endl;
@@ -531,6 +541,70 @@ void send_(tcp::socket & socket, const string& message) {
 	
        //const string msg = message + "|";
        //boost::asio::write( socket, boost::asio::buffer(message) );
+}
+
+std::string make_string(boost::asio::streambuf& streambuf) {
+  return {boost::asio::buffers_begin(streambuf.data()), 
+          boost::asio::buffers_end(streambuf.data())};
+}
+
+PacketStream fileread_(tcp::socket & socket, boost::asio::streambuf & receive_buffer) {
+		cout << "Reading file..." << endl;
+
+		boost::system::error_code error;
+		std::string data = "";
+		std::string fin = "";
+		PacketStream packets;
+		string ackit = getConstStr(ACK);
+		
+	bool loop = true;
+		
+	while (loop){
+		fin = "";
+		data = "";
+		
+		boost:asio:read_until(socket, receive_buffer, delim, error);
+		
+		if( error && error != boost::asio::error::eof ) {
+			cout << "receive failed: " << error.message() << endl;
+		}
+		else {
+			std::istream is(&receive_buffer);
+			while(std::getline(is, data)) {
+				fin = fin + data;
+			}
+			//cout << "Curr Fin: " << fin << endl;
+			//cout << "Curr data: " << data << endl;
+			
+		}
+		
+		fin.pop_back(); //remove etx
+		
+		//cout << "Got: " << fin << endl;
+		cout << "Got a packet :)" << endl;
+		
+		try{
+			fin = base64_decode(fin);
+		} catch (int a){
+			cout << "Uh oh!" << endl;
+		}
+		
+		//cout << "Decoded: " << fin << endl;
+		
+		
+		if(fin != "leave"){
+			packets.push_back(readPacket(fin));			
+			send_(socket, ackit);
+			
+		} else {
+			cout << endl << "Finished up. On to the next thing." << endl;
+			loop = false;
+			send_(socket, ackit);
+		}
+		
+	}
+	
+    return packets; //return final data
 }
 
 std::string pack(tcp_header *head, string *bod) {
@@ -567,31 +641,21 @@ int main() {
 	
 	
 // getting a response from the server
-
-    //boost::asio::streambuf receive_buffer; //create a buffer to read in data
 	
 	//socket.wait(boost::asio::ip::tcp::socket::wait_read);
     string message = read_(socket, receive_buffer);
 	
-	//string message = read_(socket);
-	//boost::asio::read(socket, receive_buffer, boost::asio::transfer_all(), error); //Read everything from incoming data
 	
 	cout << "Server sent: " << message << endl;
 	
-	//Good example of recieving data. We prolly use most of it:
-	//especially the buffer, thats what we'd use for this i think. In the server, this is done via functions :)
 
 	
 	//socket.wait(boost::asio::ip::tcp::socket::wait_read);
 	cout << "Getting Server Configuration.." << endl;
 	
-	//boost::asio::read(socket, receive_buffer, boost::asio::transfer_all(), error); //Read everything from incoming data
-	
 	
 	//Load configuration
 	string configJson = read_(socket, receive_buffer);
-	
-	//cout << endl << "Config JSON: " << endl << configJson << endl;
 	
 	
 	srv_options server_config;
@@ -599,28 +663,13 @@ int main() {
 	
 	cout << endl << "Configuration Loaded! Current Config: " << endl << endl << server_config.toString() << endl;
 	
-	//Test! Read a test text file 
-	tcp_packet tester;
-	tcp_header testh;
-	string testbody;
 	
 	//read_ returns the json of a packet
-	string packson = read_(socket, receive_buffer);
-	cout << "Test Received: " << endl << packson << endl;
+	PacketStream packs = fileread_(socket, receive_buffer);
 	
-	//unpack, passing in references of a header and body. this populates values
-	unpack(packson, &testh, &testbody);
+	cout << "Read complete." << endl;
 	
-	tester = readPacket(pack(&testh, &testbody));
-	
-	cout << "Testing! " << endl << tester.toString() << endl;
-	
-	writeFile(tester.body, "client_output.png");
-
-	
-	//TODO: Read Packet in
-	//TODO: Calculate/validate checksum
-	//TODO: Send acknowlegement back
+	writeFile(&packs, "client_out");
 
 
 	cout << endl << "Disconnected." << endl;
