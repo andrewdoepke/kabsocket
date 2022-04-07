@@ -5,7 +5,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <random>
-
+#include "base64.h"
 
 using namespace boost::asio;
 using ip::tcp;
@@ -13,6 +13,8 @@ using std::string;
 using std::cout;
 using std::cin;
 using std::endl;
+using std::ios;
+using std::ofstream;
 
 const int PORT = 1234; //Simulated port for this program
 
@@ -21,7 +23,7 @@ namespace pt = boost::property_tree;
 typedef std::vector<int> IntVec;
 typedef std::vector<string> StrVec;
 
-const string delim = "\x04\x03\n";
+const char delim = '\x04';
 
 //--------------Define Flags--------------//
 // https://www.geeksforgeeks.org/tcp-flags/
@@ -37,6 +39,8 @@ const string delim = "\x04\x03\n";
 	//For sliding window protocol. This will be separate from normal TCP flags.
 	const uint8_t GBN = 6;
 	const uint8_t SLR = 7;
+
+	const int header_size = 17; //17 byte headers
 
 	//Associate strings with the numbers
 	std::string getConstStr(uint8_t num){
@@ -474,6 +478,11 @@ srv_options userInput(srv_options server_options){
 		}
 	}
 
+	if(packetSize <= header_size){
+		cout << "Minimum packet size is 20 bytes (header is 17). Defaulting to 20 bytes." << endl;
+		packetSize = 18;
+	}
+
 //Timeout interval (user-specified or ping-calculated)
 	while(timeout < 0){
 		cout << "Please enter the timeout interval you'd like, as a positive integer. Enter 0 for ping-based timeout." << endl;
@@ -664,48 +673,96 @@ srv_options userInput(srv_options server_options){
 	return server_options;
 } //end user input
 
+//Found this code to load binary from a file
+std::vector<char> readBinaryFile(string fPath) {
+  std::ifstream in(fPath, std::ios::binary);
+  in.seekg(0, std::ios::end);
+  int iSize = in.tellg();
+  in.seekg(0, std::ios::beg);
+
+  std::vector<char> pBuff(iSize);
+  if ( iSize > 0 )
+      in.read(&pBuff[0], iSize);
+  in.close();
+
+	return pBuff;
+}
+
+std::string binToString(std::vector<char> pBuff){
+	std::string out(pBuff.begin(), pBuff.end());
+	return out;
+}
+
 //Encode a file in base 64
-string b64EncodeFile(){
+string b64EncodeFile(string fPath){
 	string encoded = "";
+
+	cout << "Reading file... " << endl;
+	std::vector<char> raw;
+	readBinaryFile(fPath);
+	cout << "Got it. Encoding" << endl;
+
+	encoded = base64_encode(binToString(raw));
 
 	return encoded;
 }
 
-//Decode a string to a file from base 64
-string b64DecodeFile(string b64){
-	string decoded = "";
+//Write to a file
+int writeFile(PacketStream *packets, string fPath){
+	try {
+		cout << "Writing file..." << endl;
+		ofstream outfile;
+		outfile.open(fPath, ios::out | ios::binary);
 
-	return decoded;
+
+		std::vector<char> file;
+		std::string t_bod = "";
+
+		for(tcp_packet p : *packets){
+			t_bod = p.body;
+			for(char c : t_bod){
+				file.push_back(c);
+			}
+		}
+
+
+		outfile.write (&file[0], file.size());
+
+		outfile.close();
+
+		cout << "Successfully saved the file to: " << fPath << endl;
+		return 0;
+	} catch(int e){
+		cout << "Uh oh! Error code:" << e << endl;
+		return e;
+	}
 }
 
+//Changed to use vector of strings containing each packet body
+void stageFile(int packetSize, std::vector<char> *buff, StrVec *out) {
+	int i;
+	string tempbod = "";
+	int bC = 0;
+	int buffSize = buff->size();
+	int progCount = buffSize;
+	int bodySize = packetSize - header_size;
 
-//Encode a string in base 64
-string b64Encode(string raw){
-	string encoded = "";
+	   while(bC < buffSize){ //split packets
+			 tempbod="";
+			 
+			 if(bC + bodySize <= buffSize){
+				tempbod = string(buff->begin() + bC, buff->begin() + bC + bodySize);
+				bC += bodySize;
+				progCount -= bodySize;
+			 } else {
+				tempbod = string(buff->begin() + bC, buff->end());
+				bC = buffSize;
+				progCount = 0;
+			 }
+			 cout << "Bytes left to go: " << progCount << endl;
 
-	return encoded;
-}
-
-//Decode a string to a string from base 64
-string b64Decode(string b64){
-	string decoded = "";
-
-	return decoded;
-}
-
-//Highest level.
-//This will load the file in, split it into packets bodies given the packet size, and return a vector of packets
-//The packet headers can then be modified based on tcp runtime
-PacketStream stageFile(int packetSize) {
-	string encoded = b64EncodeFile(); //Encode the file
-	PacketStream out;
-
-	//TODO: Split the string based on packet size
-
-	//TODO: Populate tcp_packets in a PacketStream (custom typedef = vector<tcp_packet>)
-		//Set each packet body with the split string. Final packet will have less data.
-
-	return out; //return the data
+			 out->push_back(tempbod);
+	   }//end while
 }
 
 //Batch convert a PacketStream(Vector<tcp_packet>) to a StrVec(Vector<string>) containing json for each packet
@@ -725,21 +782,122 @@ StrVec convert_PacketStream_StrVec(PacketStream packets){
 //Read a string from a socket until it hits our delim
 string read_(tcp::socket & socket) {
        boost::asio::streambuf buf;
-       boost::asio::read_until( socket, buf, delim);
-       string data = boost::asio::buffer_cast<const char*>(buf.data());
-       return data;
+	   boost::system::error_code error;
+	   string data;
+	   
+       boost::asio::read_until( socket, buf, delim, error);
+	if( error && error != boost::asio::error::eof ) {
+		cout << "receive failed: " << error.message() << endl;
+	} else {
+       data = boost::asio::buffer_cast<const char*>(buf.data());
+
+	   data.pop_back();
+	   //data.pop_back();
+
+	   //decode data
+	   data = base64_decode(data);
+
+	   cout << "Read: " << data << endl;
+	}
+	return data;
 }
+
+
 
 //Send a string over the socket, ending with the delim
 void send_(tcp::socket & socket, const string& message) {
-       const string msg = message + delim;
-       boost::asio::write( socket, boost::asio::buffer(msg) );
+       const string data = base64_encode(message) + delim;
+
+	   cout << "\nMessage: " << endl << data << endl << endl;
+
+       boost::asio::write( socket, boost::asio::buffer(data) );
+}
+
+tcp_header initHeader(srv_options *srvOp){
+	tcp_header base_header;
+	base_header.seq_num = genSeqNum(srvOp->seqLower, srvOp->seqUpper); //generate first seq number
+	base_header.ack_num = 1; //initialize ack num
+	base_header.offset = 0; //initialize offset
+	base_header.flag = IGN; //default flag to ignore
+	base_header.window = srvOp->slidingWinSize; //initialize window size. Probably will have to changed
+	base_header.checksum = 0; //initialize checksum
+	
+	return base_header;
+
+}
+
+void advanceHeader(tcp_header *last, srv_options *srvOp, uint8_t flag){
+	if(last->ack_num > 1){
+		last->seq_num = getSeqNum(last->seq_num, srvOp->seqLower, srvOp->seqUpper);
+		last->ack_num++;
+		last->flag = flag;
+		//add more
+	}
+}
+
+//Send a string over the socket, ending with the delim
+void filesend_(tcp::socket & socket, srv_options *options, string filePath) {
+		StrVec bodies;
+		std::vector<char> buff = readBinaryFile(filePath);
+		stageFile(options->packetSize, &buff, &bodies); //load bodies from the file
+		string validate = "";
+
+		//Write all packets individually
+		string tempPack;
+		tcp_header curr_head = initHeader(options);
+		tcp_packet curr_packet;
+
+
+		for(string b : bodies){
+			advanceHeader(&curr_head, options, IGN); //advance the header. This raises the ack number by 1 and iterates the sequence number
+			
+			curr_packet.body = base64_encode(b); //encode the body..
+			curr_packet.header = curr_head.toJson(); //Set the current packet header
+
+			validate = "";
+			cout << "Encoding packet... " << endl;
+			
+			tempPack = base64_encode(curr_packet.toJson()); //Create a b64 encoded string for the packet object
+			tempPack += delim; //add the delimiter
+			
+			//cout << "Current packet encoded: " << tempPack << endl;
+			
+			boost::asio::write( socket, boost::asio::buffer(tempPack) ); //write the current packet
+
+			cout << "waiting for ack..." << endl;
+
+
+			while(validate != "ACK"){ //wait for an ack
+				validate = "";
+				validate = read_(socket);
+			}
+		}
+
+	   cout << "Sent! Telling client to exit." << endl;
+	   string end = "leave";
+	   send_(socket, end);
+
+	   	validate = "";
+		cout << "waiting for ACK to end..." << endl;
+		while(validate != "ACK"){
+			validate = read_(socket);
+		}
+
+}
+
+std::string pack(tcp_header *head, string *bod) {
+	tcp_packet packs;
+	tcp_header h;
+	h = *head;
+	packs.header = h.toJson();
+	packs.body = *bod;
+
+	return packs.toJson();
 }
 
 
 //Waits for a connection and returns the socket once connected
-tcp::socket connect() {
-	boost::asio::io_service io_service;
+tcp::socket connect(boost::asio::io_service & io_service) {
 	cout << "Waiting for a connection..." << endl;
 
 	//Create a listener on specified port
@@ -762,6 +920,7 @@ tcp::socket connect() {
 //Perform server functions on passed socket.This will probably be the bulk of everything.
 int operate(tcp::socket socket_, srv_options srvOp){
 
+
 		//Call stageFile()
 
 		//This is the basic read, we'll get rid of this eventually.
@@ -782,20 +941,33 @@ int operate(tcp::socket socket_, srv_options srvOp){
 		send_(socket_, srvConfJson); //sends the json of the srvConf
 		cout << "Sent!" << endl;
 
-		//TODO: Now we should enter the main loop for this specific operation
 
-			//Start off by sending a SYN packet to the client, and wait for the client to send back SYN followed by ACK. These packets can have empty data.
-			//After we receive the ACK
+		//Test!
+		cout << "Sending the file..." << endl;
+		string filePath = "100mB";
+		std::vector<char> data;
+		filesend_(socket_, &srvOp, filePath);
 
-		//TODO: Maybe add threads for ex credit. it honestly might not be too hard but
+		boost::system::error_code ec;
+		socket_.close(ec);
+		if (ec) {
+		  cout << "Error: " << ec << endl;
+		}
 
 		cout << "Finished processing this one." << endl << endl;
-		socket_.close();
 		return 0;
 } //End Operate
 
 //------------------------------------------------------------------------------------Begin Main------------------------------------------------------------------------------------//
 int main(int argc, char** argv) {
+
+	cout << "Test B64 Encode File" << endl;
+	string encoded = b64EncodeFile("hi.txt");
+	string decoded = base64_decode(encoded);
+	cout << "Decoding this: " << endl << decoded << endl;
+
+	//cout << "Testing, loading the file data again and copying to a new file thru b64! New file path: 'elpat.txt'" << endl;
+	//writeFile(b64EncodeFile("hi.txt"), "elpat.txt");
 
 	//Take user input
 	srv_options srvOp;
@@ -874,7 +1046,7 @@ if(debug) {
 
 	while(1){ //loop forever. This will probably have to change and work conditionally. Probably catch a signal or smth idk.
 
-		operate(connect(), srvOp); //Creates a new connection and does the functionality on it
+		operate(connect(io_service), srvOp); //Creates a new connection and does the functionality on it
 		//connect() moves the socket, so we move it to the operate() function, and give it our server options
 
 	} //end while. we want to keep this server running until killed server-side. built to serve.
