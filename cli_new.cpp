@@ -224,7 +224,7 @@ tcp_packet packData(tcp_packet pack, string json){
 	pt::read_json(ss, reader);
 
 	pack.header = reader.get<string>("header");
-	pack.body = reader.get<string>("body");
+	pack.body = base64_decode(reader.get<string>("body"));
 
 	return (pack);
 }
@@ -244,7 +244,7 @@ int unpack(string pck_json, tcp_header *head, string *body){
 	try{
 		tcp_packet pck = readPacket(pck_json);
 		*head = readHeader(pck.header);
-		*body = pck.body;
+		*body = base64_decode(pck.body);
 		return 0;
 	} catch (int e) {
 		cout << "Bruh Moment. Something broke: " << e << endl;
