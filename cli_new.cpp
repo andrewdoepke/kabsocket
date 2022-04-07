@@ -556,6 +556,7 @@ PacketStream fileread_(tcp::socket & socket, boost::asio::streambuf & receive_bu
 		std::string fin = "";
 		PacketStream packets;
 		string ackit = getConstStr(ACK);
+		tcp_packet curr;
 		
 	bool loop = true;
 		
@@ -589,11 +590,25 @@ PacketStream fileread_(tcp::socket & socket, boost::asio::streambuf & receive_bu
 			cout << "Uh oh!" << endl;
 		}
 		
+		curr = readPacket(fin);
+
 		//cout << "Decoded: " << fin << endl;
+		
+		//Validate or whateva. curr is our current packet
+		// Validate the checksum
+
+		// If not good, ....
+
+		// Else (checksum is 0, there is no error)
+		// {
+
+
+
+
 		
 		
 		if(fin != "leave"){
-			packets.push_back(readPacket(fin));			
+			packets.push_back(curr); //valid, so push		
 			send_(socket, ackit);
 			
 		} else {
@@ -601,6 +616,7 @@ PacketStream fileread_(tcp::socket & socket, boost::asio::streambuf & receive_bu
 			loop = false;
 			send_(socket, ackit);
 		}
+		// }
 		
 	}
 	
