@@ -739,7 +739,9 @@ string read_() {
       // asynchronous operations are cancelled.
 	  
 		send_("TIMEOUT");
+		socket_.close();
 		stop();
+		return;
 
       // There is no longer an active deadline. The expiry is set to the
       // maximum time point so that the actor takes no action until a new
