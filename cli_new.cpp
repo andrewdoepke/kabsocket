@@ -592,8 +592,62 @@ PacketStream fileread_(tcp::socket & socket, boost::asio::streambuf & receive_bu
 		
 		curr = readPacket(fin);
 
+		std::string sumNumTotal = "";
+		std::bitset<16> emptyBits; // all 16 bits initialized to 0 for initial sum
+
+		std::bitset<16> currS_Port(curr.s_port);
+		std::bitset<16> currD_Port(curr.d_port);
+		std::bitset<16> currSeq_Num(curr.seq_num);
+		std::bitset<16> currOffset(curr.offset);
+		std::bitset<16> currFlag(curr.flag);
+		std::bitset<16> currWindow(curr.window);
+
+
+		// TODO: make global variable for counting how many carries occur
+		// int carryCount (will update after every call to sumNum below)
+
+		// Takes the sum of the packet headers 
+		sumNumTotal = sumNum(emptyBits.to_string(), currS_Port.to_string());
+		sumNumTotal = sumNum(sumNumTotal, currD_Port.to_string());
+		sumNumTotal = sumNum(sumNumTotal, currSeq_Num.to_string());
+		sumNumTotal = sumNum(sumNumTotal, currOffset.to_string());
+		sumNumTotal = sumNum(sumNumTotal, currFlag.to_string());
+		sumNumTotal = sumNum(sumNumTotal, currWindow.to_string());
+
+		// sumNumTotal = sumNum(sumNumTotal, carryCount);
+
+		// Find the checksum value (the one's compliment of the sumNumTotal)
+		std::string complimentChecksum = onesCompliment(sumNumTotal);
+
+		// Sum the sumNumTotal and complimentChecksum value
+		std::string checksum = sumNum(sumNumTotal, complimentChecksum);
+
+		// Take the one's compliment of the checksum value (should be 0 if no errors, anything else is an error)
+		std::string checksumValue = onesCompliment(checksum);
+		std::bitset<16> checksumBits(checksumValue);
+
+		// If there was an error in the transmission
+		if (checksumBits.to_ulong() != 0) {
+
+		} 
+		else { // No error (was stated by Andrew that this should be in here)
+			/*
+
+			if(fin != "leave") {
+				packets.push_back(curr); //valid, so push		
+				send_(socket, ackit);
+			} else {
+				cout << endl << "Finished up. On to the next thing." << endl;
+				loop = false;
+				send_(socket, ackit);
+			}
+
+			*/
+		}
+
+
 		//cout << "Decoded: " << fin << endl;
-		
+
 		//Validate or whateva. curr is our current packet
 		// Validate the checksum
 
@@ -602,11 +656,6 @@ PacketStream fileread_(tcp::socket & socket, boost::asio::streambuf & receive_bu
 		// Else (checksum is 0, there is no error)
 		// {
 
-
-
-
-		
-		
 		if(fin != "leave"){
 			packets.push_back(curr); //valid, so push		
 			send_(socket, ackit);
@@ -631,6 +680,55 @@ std::string pack(tcp_header *head, string *bod) {
 	packs.body = *bod;
 	
 	return packs.toJson();
+}
+
+// String a will be the current sum of the bits
+// String b is what will be added to the sum
+std::string sumNum(std::string a, std::string b) {
+	std::string sum = ""; // This will be the sum result
+	int carry = 0;
+	int size = 16;
+
+	for (int i = length-1; i >= 0; i--) {
+		int bitA = a.at(i) - '0';
+		int bitB = b.at(i) - '0';
+		int bit = (bitA ^ bitB ^ carry) + '0';
+
+		sum = (char)bit + sum;
+		carry = (bitA & bitB) | (bitB & carry) | (bitA & carry);
+	}
+
+
+	// Currently we have it working for only one wrap, if multiple carries happen... must happen all at once
+	// TODO: have a counter to keep track of how many shifts/wraps have 
+
+	// This wraps the bits that have overflowed
+	if (carry) { // 1001 + 1000 = 10001 -> '1' + '0001'
+		//sum = '1' + sum;
+
+		// sum = sumNum(sum, "0000000000000001"); // change this to its own function or the number of carries
+		// or...
+		// std::bitset<16> bitsCarried(1);
+		// sum = sumNum(sum, bitsCarried.to_string());
+
+	}
+
+	return sum;
+}
+
+// Take the one's compliment of the given string of bits (1001 -> 0110)
+std::string onesCompliment(std::string str) {
+	std::string complimentStr = "";
+
+	for (int i = 0; i < str.length(); i++) {
+		if (str[i] == '0') {
+			complimentStr += "1";
+		} else if (str[i] == '1') {
+			complimentStr += "0";
+		}
+	}
+
+	return complimentStr;
 }
 
 
