@@ -566,7 +566,7 @@ private:
     {
       std::cout << "Connected to " << endpoint_iter->endpoint() << "\n";
 
-	  
+
 	cout << "Getting Server Configuration.." << endl;
 
 
@@ -577,8 +577,8 @@ private:
 	server_config = readSrvOp(configJson);
 
 	cout << endl << "Configuration Loaded! Current Config: " << endl << endl << server_config.toString() << endl;
-	  
-	  
+
+
 	cout << "Reading... " << endl;
 	  //read_ returns the json of a packet
 	//PacketStream packs = fileread_();
@@ -587,7 +587,7 @@ private:
 
     }
   }
-  
+
     //Read a string from a socket until it hits our delim. This is synchronous/blocking and is used to load the server configuration.
 string read_() {
        boost::asio::streambuf buf;
@@ -610,18 +610,18 @@ string read_() {
 	   //cout << "Read: " << data << endl;
 	   send_("ACK");
 	}
-		
+
 
 	return data;
 }
-  
+
 //starts/renews a timer on the read handler
   void start_read()
   {
 	 //cout << "starting read... " << endl;
 	//set timeout
     deadline_.expires_after(boost::asio::chrono::seconds(15));
-	
+
 	//call async read until, giving it our read handler
     boost::asio::async_read_until(socket_,
         boost::asio::dynamic_buffer(input_buffer_), delim,
@@ -633,6 +633,23 @@ string read_() {
 	//Read handler. We are only receiving packets, so this will parse them and do what we need to do.
   void handle_read(const bs::error_code& ec, std::size_t n)
   {
+
+		if(timed == true){
+			cout << "We timed out! handle it here..." << endl;
+
+			std::string line(input_buffer_.substr(0, n - 1));
+			input_buffer_.erase(0, n);
+			line = "";
+			input_buffer_ = "";
+			//cout << "cleared input buffer: " << input_buffer_ << endl;
+
+
+			//HANDLE CLI SIDE TIMEOUT
+
+			timed = false;
+			start_read();
+			return;
+		} else {
 	  //cout << "Got somehting" << endl;
 	  string ackit = getConstStr(ACK);
 	  string finish = getConstStr(FIN);
@@ -650,48 +667,51 @@ string read_() {
       if (!line.empty())
       {
         //std::cout << "Received: " << line << "\n";
-		send_(ackit);
+				send_(ackit);
       }
-	  
-		line = base64_decode(line);
+
+			line = base64_decode(line);
+
 
 	  //line is now the string we were sent!
 	  if(line == "EXIT"){
+			cout << "getting outta here" << endl;
 		socket_.close();
 		stop();
-	  } else if(line == finish){ //Tell 
+	  } else if(line == finish){ //Tell
 		cout << endl << "Finished up. On to the next thing." << endl;
 		writeFile(&packets, "client_out");
 		socket_.close();
 		stop();
-		
+
 	   } else { //Default case. This is a packet so read it into packets
 			packets.push_back(readPacket(line));
 			//send_(ackit);
 			start_read();
 		}
-	
+
     } else {
 	if( ec != boost::asio::error::eof)
       std::cout << "Error on receive: " << ec.message() << "\n";
 
       stop();
     }
+	}
   }
-  
+
     void send_(string message_) {
 	  message_ = base64_encode(message_);
-	  message_ += delim; 
-	  
+	  message_ += delim;
+
 	  //cout << "Sending " << message_ << endl;
-	  
+
         socket_.async_send(boost::asio::buffer(message_),
             boost::bind(&client::handle_write, this,
             boost::asio::placeholders::error));
     /*boost::asio::async_write(socket_, boost::asio::buffer(message_, message_.size()),
         boost::bind(&client::handle_write, this, boost::placeholders::_1));*/
   }
-  
+
 
 
   void start_write()
@@ -734,14 +754,15 @@ string read_() {
     if (deadline_.expiry() <= steady_timer::clock_type::now())
     {
 		cout << "Timed out" << endl;
-		
+
       // The deadline has passed. The socket is closed so that any outstanding
       // asynchronous operations are cancelled.
-	  
+			socket_.cancel();
 		send_("TIMEOUT");
-		socket_.close();
-		stop();
-		return;
+		timed = true;
+		//socket_.close();
+		//stop();
+		//return;
 
       // There is no longer an active deadline. The expiry is set to the
       // maximum time point so that the actor takes no action until a new
@@ -755,6 +776,7 @@ string read_() {
 
 private:
   bool stopped_;
+	bool timed;
   tcp::resolver::results_type endpoints_;
   tcp::socket socket_;
   std::string data;

@@ -787,17 +787,17 @@ public:
   }
 
   void start() {
-	  
+
 	  cout << "Connected!" << endl;
-	  
+
 	//start_read();
-  
+
 	cout << "Sending Server Config" << endl;
 	send_(srvOp.toJson()); //sends the json of the srvConf
 	cout << "Sent!" << endl;
-	
+
 	string val = "";
-	
+
 	while(val != "ACK"){
 		val = read_();
 		if(val=="TIMEOUT"){
@@ -805,17 +805,17 @@ public:
 			//handle timeout
 		}
 	}
-	
+
 	//cout << "Back in parent: " << val << endl;
-	
+
 	cout << "Sending the file..." << endl;
 	string filePath = "100mB";
 	std::vector<char> data;
 	filesend_(&srvOp, filePath);
   }
-  
-  
-  
+
+
+
   //Read a string from a socket until it hits our delim
 string read_() {
        boost::asio::streambuf buf;
@@ -841,20 +841,20 @@ string read_() {
 
 
   void send_(string message_) {
-	  
-	  
+
+
 	  message_ = base64_encode(message_);
-	  message_ += delim; 
-	  
+	  message_ += delim;
+
 	  //cout << "Sending " << message_ << endl;
 	  cout << "Sent a packet" << endl;
-	  
+
 	  boost::asio::async_write(socket_, boost::asio::buffer(message_),
         boost::bind(&tcp_connection::handle_write, shared_from_this(),
           boost::asio::placeholders::error,
           boost::asio::placeholders::bytes_transferred));
   }
-  
+
   //Send the file
     void filesend_(srv_options *options, string filePath) {
 		string ackit = getConstStr(ACK);
@@ -869,7 +869,7 @@ string read_() {
 		string tempPack;
 		tcp_header curr_head = initHeader(options);
 		tcp_packet curr_packet;
-		
+
 		cout << "Ready to send" << endl;
 
 
@@ -878,7 +878,7 @@ string read_() {
 
 			curr_packet.body = base64_encode(b); //encode the body..
 			curr_packet.header = curr_head.toJson(); //Set the current packet header
-			
+
 			tempPack = curr_packet.toJson();
 
 			validate = "";
@@ -892,8 +892,9 @@ string read_() {
 				validate = read_();
 				if(validate=="TIMEOUT"){
 					cout << "Timed out! sad." << endl;
-					
-					send_(exit);
+
+					//HANDLE SERVER SIDE TIMEOUT
+					send_(exit); //This will kill the client with exit command
 					return;
 					//handle timeout
 				}
@@ -914,8 +915,8 @@ string read_() {
 				return;
 				//handle timeout
 			}
-		}	  
-	  
+		}
+
 	  cout << "Finished processing this one." << endl << endl;
   }
 
@@ -928,12 +929,12 @@ private:
   void handle_write(const boost::system::error_code& error,
       size_t written/*bytes_transferred*/) {
 	//cout << "Wrote " << written << endl;
-	
-	
+
+
   }
-  
- 
-	
+
+
+
 std::string input_buffer_;
 string thisguy;
   tcp::socket socket_;
@@ -952,9 +953,9 @@ public:
 
 private:
   void start_accept() {
-	  
+
 	cout << "Waiting for a connection..." << endl;
-	
+
     tcp_connection::pointer new_connection =
       tcp_connection::create(io_context_);
 
