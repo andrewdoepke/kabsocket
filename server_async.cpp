@@ -483,14 +483,14 @@ srv_options userInput(srv_options server_options){
 		}
 	}
 
-	if(packetSize <= header_size){
-		cout << "Minimum packet size is 20 bytes (header is 17). Defaulting to 20 bytes." << endl;
-		packetSize = 18;
+	if(packetSize <= header_size + 4){
+		cout << "Minimum packet size is 21 bytes (header is 17). Defaulting to 21 bytes." << endl;
+		packetSize = header_size + 4;
 	}
 
 //Timeout interval (user-specified or ping-calculated)
 	while(timeout < 0){
-		cout << "Please enter the timeout interval you'd like, as a positive integer. Enter 0 for ping-based timeout." << endl;
+		cout << "Please enter the timeout interval you'd like, as a positive integer, in seconds." << endl;
 		cin >> inp;
 		if(readIsInt(inp)){//parse the int
 			timeout = stoi(inp);
@@ -500,6 +500,8 @@ srv_options userInput(srv_options server_options){
 			cout << "Using a ping-based timeout interval" << endl; //calculate this per connection, so we can do this when we open each connection
 			//continue loop
 			//BIG TODO: Make sure we check for this later instead of having a 0 timeout
+			
+			timeout = 10; //ping based? i sure think so...
 		} else if(timeout < 0 || !readIsInt(inp)){ //otherwise bad input so loop
 			cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
 		}
@@ -696,12 +698,16 @@ std::vector<char> readBinaryFile(string fPath) {
 
 //Changed to use vector of strings containing each packet body
 void stageFile(int packetSize, std::vector<char> *buff, StrVec *out) {
+	//cout << "Staging" << endl;
+	//cout << "packet size: " << packetSize << endl;
 	int i;
 	string tempbod = "";
 	int bC = 0;
 	int buffSize = buff->size();
 	int progCount = buffSize;
 	int bodySize = packetSize - header_size;
+	
+	//cout << "Buffer size: " << buffSize << " and body size: " << bodySize << endl;
 
 	   while(bC < buffSize){ //split packets
 			 tempbod="";
@@ -747,15 +753,18 @@ tcp_header initHeader(srv_options *srvOp){
 
 }
 
+/*
 void advanceHeader(tcp_header *last, srv_options *srvOp, uint8_t flag){
 	if(last->ack_num > 1){
 		last->seq_num = getSeqNum(last->seq_num, srvOp->seqLower, srvOp->seqUpper);
 		last->ack_num++;
 		last->flag = flag;
 		//add more
+	} else {
+		last->ack_num++; //
 	}
 }
-
+*/
 
 //----------------------------------------------Begin Server------------------------------------------------------//
 
@@ -803,7 +812,8 @@ public:
 	cout << "Sent!" << endl;
 
 	string val = "";
-
+	
+	//wait for ack, but this is generic so not using waitforack function
 	while(val != "ACK"){
 		val = read_();
 		if(val=="TIMEOUT"){
@@ -811,7 +821,8 @@ public:
 			//handle timeout
 		}
 	}
-
+	
+	needAck = false; //we don't need acks yet, until we need them
 	//cout << "Back in parent: " << val << endl;
 
 	cout << "Sending the file..." << endl;
@@ -859,6 +870,43 @@ string read_() {
           boost::asio::placeholders::error,
           boost::asio::placeholders::bytes_transferred));
   }
+  
+  /* Header stuff for reference
+  struct tcp_header {
+	uint16_t s_port = PORT; //sauce port. This is a default value rn but if we do multithreading, we'd have to select from a specified list of open ports.
+	uint16_t d_port = PORT; //destination port. Standard in a packet but it's also good to use the same ports on both sides.
+	uint32_t seq_num; //sequence number. This will be generated during runtime.
+	uint32_t ack_num; //acknowledgement number.
+	unsigned int offset; //Data Offset (entire size of header in bits % 32 bits)
+	uint8_t flag; //Packet flag. Use like: h.flag = ACK; or like if(h.flag == ACK) {...}
+	uint16_t window; // Window size
+	uint16_t checksum; //Checksum value
+  
+  */
+  
+  void handleTimeout(){
+	cout << "Timed out! sad." << endl;
+
+	//HANDLE SERVER SIDE TIMEOUT
+	send_("EXIT"); //This will kill the client with exit command
+	return;
+	//handle timeout
+  }
+  
+  //This will wait for an ack to come in
+  void waitForAck(int *ack_number){
+	string validate = "";
+	string ackit = getConstStr(ACK);
+	
+	while(validate != ackit){ //wait for an ack
+		validate = read_();
+		if(validate=="TIMEOUT"){
+			handleTimeout();
+		}
+	}
+	*ack_number++;
+  }
+  
 
   //Send the file
     void filesend_(srv_options *options) {
@@ -870,55 +918,59 @@ string read_() {
 
 		//Write all packets individually
 		string tempPack;
-		tcp_header curr_head = initHeader(options);
+		tcp_header curr_head;
 		tcp_packet curr_packet;
 
-		cout << "Ready to send" << endl;
+		//cout << "Ready to send" << endl;
 
-
-		for(string b : bodies){
-			advanceHeader(&curr_head, options, IGN); //advance the header. This raises the ack number by 1 and iterates the sequence number
+		int i;
+		int limit = bodies.size();
+		string b;
+		
+		//init window 
+		int win_start = 0;
+		int win_end = srvOp.slidingWinSize;
+		
+		int currAck = 1;
+		
+		
+		for(i = 0; i < limit; i++){
+			b = bodies[i]; //Current body unencoded
+			
+			if(i == 0){ //first iteration
+				curr_head = initHeader(options);
+			} else { //advance our header
+				
+				
+				
+				//advanceHeader(&curr_head, options, IGN); //advance the header. idk
+			}
+			
+			//Load checksum into header
+			
+			
+			
 
 			curr_packet.body = base64_encode(b); //encode the body..
 			curr_packet.header = curr_head.toJson(); //Set the current packet header
 
 			tempPack = curr_packet.toJson();
 
-			validate = "";
 
 			send_(tempPack);
-
-			cout << "waiting for ack..." << endl;
-
-
-			while(validate != ackit){ //wait for an ack
-				validate = read_();
-				if(validate=="TIMEOUT"){
-					cout << "Timed out! sad." << endl;
-
-					//HANDLE SERVER SIDE TIMEOUT
-					send_(exit); //This will kill the client with exit command
-					return;
-					//handle timeout
-				}
+			
+			if(needAck == true){ //if we need an ack here, wait for it! if it times out here, we can handle it in the function
+				cout << "waiting for ack..." << endl;
+				waitForAck(&currAck);
 			}
-		}
+
+		} //end for loop
 
 	   cout << "Sent! Telling client to exit." << endl;
 	   send_(finish);
 
-	   	validate = "";
 		cout << "waiting for ACK to end..." << endl;
-		while(validate != ackit){
-			validate = read_();
-			if(validate=="TIMEOUT"){
-				cout << "Timed out! sad." << endl;
-				boost::asio::write( socket_, boost::asio::buffer("\0") );
-				send_(exit);
-				return;
-				//handle timeout
-			}
-		}
+		waitForAck(&currAck); //final wait for the ack, since we finished. This will always have to happen
 		
 	//OUTPUT	
 	
@@ -944,6 +996,7 @@ std::string input_buffer_;
 string thisguy;
   tcp::socket socket_;
   std::string message_;
+  bool needAck;
 
 };
 
@@ -989,7 +1042,7 @@ int main() {
 	//Take user input
 	srvOp = userInput(srvOp);
 	cout << "Loading File..." << endl;
-	string filePath = "100mB";
+	string filePath = "hi.txt";
 	loadFile(&srvOp, filePath);
   try {
     boost::asio::io_context io_context;

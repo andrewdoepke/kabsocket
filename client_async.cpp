@@ -573,10 +573,11 @@ private:
 	//Load configuration. calling read_() starts the read listener
 	string configJson = read_();
 
-	srv_options server_config;
-	server_config = readSrvOp(configJson);
-	cout << endl << "Configuration Loaded! Current Config: " << endl << endl << server_config.toString() << endl;
-
+	srvOp = readSrvOp(configJson);
+	cout << endl << "Configuration Loaded! Current Config: " << endl << endl << srvOp.toString() << endl;
+	start_read();
+	
+	sendAck = false; //we don't want to send acks just yet. We will when we have to
 
 	cout << "Reading... " << endl;
 	  //read_ returns the json of a packet
@@ -594,7 +595,6 @@ string read_() {
 	   string data;
 
        boost::asio::read_until( socket_, buf, delim, error);
-	   	start_read();
 	if( error && error != boost::asio::error::eof ) {
 		cout << "receive failed: " << error.message() << endl;
 	} else {
@@ -620,6 +620,7 @@ string read_() {
 	 //cout << "starting read... " << endl;
 	//set timeout
 		deadline_.expires_after(boost::asio::chrono::seconds(srvOp.timeout)); //set deadline
+		//cout << "Deadline of " << srvOp.timeout << "seconds " << endl;
 
 	//call async read until, giving it our read handler
     boost::asio::async_read_until(socket_,
@@ -656,34 +657,35 @@ string read_() {
     if (stopped_)
       return;
 
-    if (!ec)
-    {
+    if (!ec) {
 	//load the data
       // Extract the newline-delimited message from the buffer.
       std::string line(input_buffer_.substr(0, n - 1));
       input_buffer_.erase(0, n);
 
-      // Empty messages are heartbeats and so ignored.
-      if (!line.empty())
-      {
+	line = base64_decode(line);
+	
+	//Send ack 
+      if (!line.empty() && sendAck == true) {
         //std::cout << "Received: " << line << "\n";
 				send_(ackit);
       }
-
-			line = base64_decode(line);
-
+		
 
 	  //line is now the string we were sent!
 	  if(line == "EXIT"){
 			cout << "getting outta here" << endl;
 		socket_.close();
 		stop();
-	  } else if(line == finish){ //Tell
+	  } else if(line == finish){ //we should finish up
+		send_(ackit); //send an ack since this part kills the program
 		cout << endl << "Finished up. On to the next thing." << endl;
 		writeFile(&packets, "client_out");
 		
 		//OUTPUT
 		
+		
+		//close client
 		socket_.close();
 		stop();
 
@@ -696,6 +698,7 @@ string read_() {
 			//send_(ackit);
 			start_read();
 		}
+	
 
     } else {
 	if( ec != boost::asio::error::eof)
@@ -704,7 +707,7 @@ string read_() {
       stop();
     }
 	}
-  }
+  } //end handle read
 
     void send_(string message_) {
 	  message_ = base64_encode(message_);
@@ -744,7 +747,7 @@ string read_() {
     }
     else
     {
-      std::cout << "Error on heartbeat: " << ec.message() << "\n";
+      std::cout << "Error on write: " << ec.message() << "\n";
 
       stop();
     }
@@ -784,6 +787,7 @@ string read_() {
 private:
   bool stopped_;
 	bool timed;
+	bool sendAck;
   tcp::resolver::results_type endpoints_;
   tcp::socket socket_;
   std::string data;
