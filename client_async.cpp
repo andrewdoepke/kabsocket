@@ -575,7 +575,6 @@ private:
 
 	srv_options server_config;
 	server_config = readSrvOp(configJson);
-
 	cout << endl << "Configuration Loaded! Current Config: " << endl << endl << server_config.toString() << endl;
 
 
@@ -620,7 +619,7 @@ string read_() {
   {
 	 //cout << "starting read... " << endl;
 	//set timeout
-    deadline_.expires_after(boost::asio::chrono::seconds(15));
+		deadline_.expires_after(boost::asio::chrono::seconds(srvOp.timeout)); //set deadline
 
 	//call async read until, giving it our read handler
     boost::asio::async_read_until(socket_,
@@ -633,6 +632,7 @@ string read_() {
 	//Read handler. We are only receiving packets, so this will parse them and do what we need to do.
   void handle_read(const bs::error_code& ec, std::size_t n)
   {
+	  tcp_packet curr_pack;
 
 		if(timed == true){
 			cout << "We timed out! handle it here..." << endl;
@@ -685,7 +685,11 @@ string read_() {
 		stop();
 
 	   } else { //Default case. This is a packet so read it into packets
-			packets.push_back(readPacket(line));
+			curr_pack = readPacket(line);
+			//DO STUFF
+			
+			
+			packets.push_back(curr_pack);
 			//send_(ackit);
 			start_read();
 		}
@@ -767,7 +771,7 @@ string read_() {
       // There is no longer an active deadline. The expiry is set to the
       // maximum time point so that the actor takes no action until a new
       // deadline is set.
-      deadline_.expires_at(steady_timer::time_point::max());
+		deadline_.expires_at(steady_timer::time_point::max());
     }
 
     // Put the actor back to sleep.

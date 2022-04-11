@@ -760,6 +760,12 @@ void advanceHeader(tcp_header *last, srv_options *srvOp, uint8_t flag){
 //----------------------------------------------Begin Server------------------------------------------------------//
 
 srv_options srvOp;
+StrVec bodies;
+
+  void loadFile(srv_options *options,string filePath){
+	  	std::vector<char> buff = readBinaryFile(filePath);
+		stageFile(options->packetSize, &buff, &bodies); //load bodies from the file
+  }
 
 using boost::asio::ip::tcp;
 
@@ -809,12 +815,11 @@ public:
 	//cout << "Back in parent: " << val << endl;
 
 	cout << "Sending the file..." << endl;
-	string filePath = "100mB";
 	std::vector<char> data;
-	filesend_(&srvOp, filePath);
+	filesend_(&srvOp);
   }
 
-
+  
 
   //Read a string from a socket until it hits our delim
 string read_() {
@@ -856,12 +861,10 @@ string read_() {
   }
 
   //Send the file
-    void filesend_(srv_options *options, string filePath) {
+    void filesend_(srv_options *options) {
 		string ackit = getConstStr(ACK);
 		string finish = getConstStr(FIN);
-		StrVec bodies;
-		std::vector<char> buff = readBinaryFile(filePath);
-		stageFile(options->packetSize, &buff, &bodies); //load bodies from the file
+
 		string validate = "";
 		string exit = "EXIT";
 
@@ -939,6 +942,7 @@ std::string input_buffer_;
 string thisguy;
   tcp::socket socket_;
   std::string message_;
+
 };
 
 class tcp_server
@@ -982,6 +986,9 @@ private:
 int main() {
 	//Take user input
 	srvOp = userInput(srvOp);
+	cout << "Loading File..." << endl;
+	string filePath = "100mB";
+	loadFile(&srvOp, filePath);
   try {
     boost::asio::io_context io_context;
     tcp_server server(io_context);
