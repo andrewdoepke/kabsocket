@@ -788,6 +788,8 @@ public:
 
   void start() {
 	  
+	  cout << "Connected!" << endl;
+	  
 	//start_read();
   
 	cout << "Sending Server Config" << endl;
@@ -798,6 +800,10 @@ public:
 	
 	while(val != "ACK"){
 		val = read_();
+		if(val=="TIMEOUT"){
+			cout << "Timed out! sad." << endl;
+			//handle timeout
+		}
 	}
 	
 	//cout << "Back in parent: " << val << endl;
@@ -832,56 +838,16 @@ string read_() {
 	}
 	return data;
 }
-  
-  // Reading messages from the server
-   /*void start_read() {
-	   
-	   cout << "starting read" << endl;
-	   
-      // Start an asynchronous operation to read a newline-delimited message.
-      // When read, handle_read should kick in
-    boost::asio::async_read_until(socket_,
-        boost::asio::dynamic_buffer(input_buffer_), delim,
-        boost::bind(&tcp_connection::handle_read, shared_from_this(),
-          boost::placeholders::_1, boost::placeholders::_2));
-   }
-
-   // When stream is received, handle the message from the client
-   void handle_read(const boost::system::error_code& ec, std::size_t n)
-   {
-      //if (stopped_)
-      //  return;
 
 
-      if (ec && ec != boost::asio::error::eof)
-      {
-			std::cout << "Error on receive: " << ec.message() << "\n";
-       }
-       else
-       {
-         // Extract the newline-delimited message from the buffer.
-		   std::string line(input_buffer_.substr(0, n - 1));
-		  input_buffer_.erase(0, n);
-
-          // Empty messages are heartbeats and so ignored.
-          if (!line.empty())
-          {
-			  line = base64_decode(line);
-              thisguy = line;
-              std::cout << "Received: " << line << "\n";
-          } else {
-			  cout << "Empty" << endl;
-		  }
-
-          start_read();
-       }
-   }*/
-  
   void send_(string message_) {
+	  
+	  
 	  message_ = base64_encode(message_);
 	  message_ += delim; 
 	  
 	  //cout << "Sending " << message_ << endl;
+	  cout << "Sent a packet" << endl;
 	  
 	  boost::asio::async_write(socket_, boost::asio::buffer(message_),
         boost::bind(&tcp_connection::handle_write, shared_from_this(),
@@ -889,11 +855,15 @@ string read_() {
           boost::asio::placeholders::bytes_transferred));
   }
   
+  //Send the file
     void filesend_(srv_options *options, string filePath) {
+		string ackit = getConstStr(ACK);
+		string finish = getConstStr(FIN);
 		StrVec bodies;
 		std::vector<char> buff = readBinaryFile(filePath);
 		stageFile(options->packetSize, &buff, &bodies); //load bodies from the file
 		string validate = "";
+		string exit = "EXIT";
 
 		//Write all packets individually
 		string tempPack;
@@ -912,32 +882,38 @@ string read_() {
 			tempPack = curr_packet.toJson();
 
 			validate = "";
-			//cout << "Encoding packet... " << endl;
 
-			//tempPack = base64_encode(curr_packet.toJson()); //Create a b64 encoded string for the packet object
-			//tempPack += delim; //add the delimiter
-
-			//cout << "Current packet encoded: " << tempPack << endl;
-
-			//boost::asio::write( socket, boost::asio::buffer(tempPack) ); //write the current packet
 			send_(tempPack);
 
 			cout << "waiting for ack..." << endl;
 
 
-			while(validate != "ACK"){ //wait for an ack
+			while(validate != ackit){ //wait for an ack
 				validate = read_();
+				if(validate=="TIMEOUT"){
+					cout << "Timed out! sad." << endl;
+					
+					send_(exit);
+					return;
+					//handle timeout
+				}
 			}
 		}
 
 	   cout << "Sent! Telling client to exit." << endl;
-	   string end = "leave";
-	   send_(end);
+	   send_(finish);
 
 	   	validate = "";
 		cout << "waiting for ACK to end..." << endl;
-		while(validate != "ACK"){
+		while(validate != ackit){
 			validate = read_();
+			if(validate=="TIMEOUT"){
+				cout << "Timed out! sad." << endl;
+				boost::asio::write( socket_, boost::asio::buffer("\0") );
+				send_(exit);
+				return;
+				//handle timeout
+			}
 		}	  
 	  
 	  cout << "Finished processing this one." << endl << endl;
@@ -975,8 +951,10 @@ public:
   }
 
 private:
-  void start_accept()
-  {
+  void start_accept() {
+	  
+	cout << "Waiting for a connection..." << endl;
+	
     tcp_connection::pointer new_connection =
       tcp_connection::create(io_context_);
 

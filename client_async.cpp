@@ -300,7 +300,6 @@ int getSeqNum(int last, int upper, int lower) {
 
 }
 
-
 //------------------begin server options---------------------//
 struct srv_options {
 
@@ -571,36 +570,32 @@ private:
 	cout << "Getting Server Configuration.." << endl;
 
 
-	//Load configuration
+	//Load configuration. calling read_() starts the read listener
 	string configJson = read_();
-
 
 	srv_options server_config;
 	server_config = readSrvOp(configJson);
 
 	cout << endl << "Configuration Loaded! Current Config: " << endl << endl << server_config.toString() << endl;
 	  
+	  
+	cout << "Reading... " << endl;
 	  //read_ returns the json of a packet
 	//PacketStream packs = fileread_();
 
 	//cout << "Read complete." << endl;
-	
-	      // Start the input actor.
-      start_read();
-
-      // Start the heartbeat actor.
-      start_write();
 
     }
   }
   
-    //Read a string from a socket until it hits our delim
+    //Read a string from a socket until it hits our delim. This is synchronous/blocking and is used to load the server configuration.
 string read_() {
        boost::asio::streambuf buf;
 	   boost::system::error_code error;
 	   string data;
 
        boost::asio::read_until( socket_, buf, delim, error);
+	   	start_read();
 	if( error && error != boost::asio::error::eof ) {
 		cout << "receive failed: " << error.message() << endl;
 	} else {
@@ -615,30 +610,38 @@ string read_() {
 	   //cout << "Read: " << data << endl;
 	   send_("ACK");
 	}
+		
+
 	return data;
 }
   
-
+//starts/renews a timer on the read handler
   void start_read()
   {
-    // Set a deadline for the read operation.
-    deadline_.expires_after(boost::asio::chrono::seconds(120));
-
-    // Start an asynchronous operation to read a newline-delimited message.
+	 //cout << "starting read... " << endl;
+	//set timeout
+    deadline_.expires_after(boost::asio::chrono::seconds(15));
+	
+	//call async read until, giving it our read handler
     boost::asio::async_read_until(socket_,
         boost::asio::dynamic_buffer(input_buffer_), delim,
         boost::bind(&client::handle_read, this,
           boost::placeholders::_1, boost::placeholders::_2));
   }
 
+
+	//Read handler. We are only receiving packets, so this will parse them and do what we need to do.
   void handle_read(const bs::error_code& ec, std::size_t n)
   {
+	  //cout << "Got somehting" << endl;
 	  string ackit = getConstStr(ACK);
+	  string finish = getConstStr(FIN);
     if (stopped_)
       return;
 
     if (!ec)
     {
+	//load the data
       // Extract the newline-delimited message from the buffer.
       std::string line(input_buffer_.substr(0, n - 1));
       input_buffer_.erase(0, n);
@@ -650,21 +653,25 @@ string read_() {
 		send_(ackit);
       }
 	  
-	  line = base64_decode(line);
-	  
-	  if(line != "leave"){
+		line = base64_decode(line);
+
+	  //line is now the string we were sent!
+	  if(line == "EXIT"){
+		socket_.close();
+		stop();
+	  } else if(line == finish){ //Tell 
+		cout << endl << "Finished up. On to the next thing." << endl;
+		writeFile(&packets, "client_out");
+		socket_.close();
+		stop();
+		
+	   } else { //Default case. This is a packet so read it into packets
 			packets.push_back(readPacket(line));
 			//send_(ackit);
 			start_read();
-		} else {
-			cout << endl << "Finished up. On to the next thing." << endl;
-			writeFile(&packets, "client_out");
-			socket_.close();
-			stop();
 		}
-    }
-    else
-    {
+	
+    } else {
 	if( ec != boost::asio::error::eof)
       std::cout << "Error on receive: " << ec.message() << "\n";
 
@@ -726,9 +733,13 @@ string read_() {
     // deadline before this actor had a chance to run.
     if (deadline_.expiry() <= steady_timer::clock_type::now())
     {
+		cout << "Timed out" << endl;
+		
       // The deadline has passed. The socket is closed so that any outstanding
       // asynchronous operations are cancelled.
-      socket_.close();
+	  
+		send_("TIMEOUT");
+		stop();
 
       // There is no longer an active deadline. The expiry is set to the
       // maximum time point so that the actor takes no action until a new
