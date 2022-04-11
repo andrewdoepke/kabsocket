@@ -681,6 +681,9 @@ string read_() {
 	  } else if(line == finish){ //Tell
 		cout << endl << "Finished up. On to the next thing." << endl;
 		writeFile(&packets, "client_out");
+		
+		//OUTPUT
+		
 		socket_.close();
 		stop();
 
