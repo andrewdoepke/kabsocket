@@ -602,9 +602,7 @@ PacketStream fileread_(tcp::socket & socket, boost::asio::streambuf & receive_bu
 		std::bitset<16> currFlag(curr.flag);
 		std::bitset<16> currWindow(curr.window);
 
-
-		// TODO: make global variable for counting how many carries occur
-		// int carryCount (will update after every call to sumNum below)
+		int numCarries = 0;
 
 		// Takes the sum of the packet headers 
 		sumNumTotal = sumNum(emptyBits.to_string(), currS_Port.to_string());
@@ -614,7 +612,11 @@ PacketStream fileread_(tcp::socket & socket, boost::asio::streambuf & receive_bu
 		sumNumTotal = sumNum(sumNumTotal, currFlag.to_string());
 		sumNumTotal = sumNum(sumNumTotal, currWindow.to_string());
 
-		// sumNumTotal = sumNum(sumNumTotal, carryCount);
+		std::bitset<16> carriesBin(numCarries);
+
+		sumNumTotal = sumNum(sumNumTotal, carriesBin.to_string());
+
+		numCarries = 0;
 
 		// Find the checksum value (the one's compliment of the sumNumTotal)
 		std::string complimentChecksum = onesCompliment(sumNumTotal);
@@ -689,7 +691,7 @@ std::string sumNum(std::string a, std::string b) {
 	int carry = 0;
 	int size = 16;
 
-	for (int i = length-1; i >= 0; i--) {
+	for (int i = size-1; i >= 0; i--) {
 		int bitA = a.at(i) - '0';
 		int bitB = b.at(i) - '0';
 		int bit = (bitA ^ bitB ^ carry) + '0';
@@ -704,13 +706,7 @@ std::string sumNum(std::string a, std::string b) {
 
 	// This wraps the bits that have overflowed
 	if (carry) { // 1001 + 1000 = 10001 -> '1' + '0001'
-		//sum = '1' + sum;
-
-		// sum = sumNum(sum, "0000000000000001"); // change this to its own function or the number of carries
-		// or...
-		// std::bitset<16> bitsCarried(1);
-		// sum = sumNum(sum, bitsCarried.to_string());
-
+		numCarries += 1;
 	}
 
 	return sum;
