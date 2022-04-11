@@ -83,6 +83,27 @@ const char delim = '\x04';
 //---------------------------------------//
 
 
+
+class TimeoutAdjust
+{
+public:
+  TimeoutAdjust(unsigned int dwTimeout) : m_dwTimeout(dwTimeout) {};
+
+  template<class Protocol>
+  int level(const Protocol& p) const {return SOL_SOCKET;}
+
+  template<class Protocol>
+  int name(const Protocol& p) const {return SO_SNDTIMEO;}
+
+  template<class Protocol>
+  const void* data(const Protocol& p) const {return &m_dwTimeout;}
+
+  template<class Protocol>
+  size_t size(const Protocol& p) const {return sizeof(m_dwTimeout);}
+private:
+  unsigned int m_dwTimeout;
+};
+
 //TCP Packet Header
 //We can maybe just comment some of these out if they're not gonna be used.
 //https://www.techrepublic.com/article/exploring-the-anatomy-of-a-data-packet/
@@ -749,7 +770,7 @@ void stageFile(int packetSize, std::vector<char> *buff, StrVec *out) {
 
 	   while(bC < buffSize){ //split packets
 			 tempbod="";
-			 
+
 			 if(bC + bodySize <= buffSize){
 				tempbod = string(buff->begin() + bC, buff->begin() + bC + bodySize);
 				bC += bodySize;
@@ -784,7 +805,7 @@ string read_(tcp::socket & socket) {
        boost::asio::streambuf buf;
 	   boost::system::error_code error;
 	   string data;
-	   
+
        boost::asio::read_until( socket, buf, delim, error);
 	if( error && error != boost::asio::error::eof ) {
 		cout << "receive failed: " << error.message() << endl;
@@ -821,7 +842,7 @@ tcp_header initHeader(srv_options *srvOp){
 	base_header.flag = IGN; //default flag to ignore
 	base_header.window = srvOp->slidingWinSize; //initialize window size. Probably will have to changed
 	base_header.checksum = 0; //initialize checksum
-	
+
 	return base_header;
 
 }
@@ -850,18 +871,18 @@ void filesend_(tcp::socket & socket, srv_options *options, string filePath) {
 
 		for(string b : bodies){
 			advanceHeader(&curr_head, options, IGN); //advance the header. This raises the ack number by 1 and iterates the sequence number
-			
+
 			curr_packet.body = base64_encode(b); //encode the body..
 			curr_packet.header = curr_head.toJson(); //Set the current packet header
 
 			validate = "";
 			cout << "Encoding packet... " << endl;
-			
+
 			tempPack = base64_encode(curr_packet.toJson()); //Create a b64 encoded string for the packet object
 			tempPack += delim; //add the delimiter
-			
+
 			//cout << "Current packet encoded: " << tempPack << endl;
-			
+
 			boost::asio::write( socket, boost::asio::buffer(tempPack) ); //write the current packet
 
 			cout << "waiting for ack..." << endl;
@@ -914,6 +935,7 @@ tcp::socket connect(boost::asio::io_service & io_service) {
 	cout << endl << "Connected!" << endl;
 	cout << "Client opened a connection from " << cli << ":" << PORT << endl << endl;
 
+
 	return std::move (socket_);
 }
 
@@ -941,8 +963,6 @@ int operate(tcp::socket socket_, srv_options srvOp){
 		send_(socket_, srvConfJson); //sends the json of the srvConf
 		cout << "Sent!" << endl;
 
-
-		//Test!
 		cout << "Sending the file..." << endl;
 		string filePath = "100mB";
 		std::vector<char> data;

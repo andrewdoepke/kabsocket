@@ -6,6 +6,8 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <random>
 #include "base64.h"
+#include <future>
+#include <chrono>
 
 using namespace boost::asio;
 using ip::tcp;
@@ -35,12 +37,12 @@ const char delim = '\x04';
 	const uint8_t RST = 3; //Reset
 	const uint8_t PSH = 4; //Push
 	const uint8_t URG = 5; //Urgent
-	
+
 	//For sliding window protocol. This will be separate from normal TCP flags.
 	const uint8_t GBN = 6;
 	const uint8_t SLR = 7;
-	
-	
+
+
 	//Associate strings with the numbers
 	std::string getConstStr(uint8_t num){
 		switch(num){
@@ -75,10 +77,10 @@ const char delim = '\x04';
 				return "Empty or invalid..";
 				break;
 		}
-		
+
 		return "";
 	}
-	
+
 //---------------------------------------//
 //TCP Packet Header
 //We can maybe just comment some of these out if they're not gonna be used.
@@ -295,7 +297,7 @@ int getSeqNum(int last, int upper, int lower) {
 
 //------------------begin server options---------------------//
 struct srv_options {
-	
+
 	int proType;
 	int packetSize;
 	int timeout;
@@ -305,7 +307,7 @@ struct srv_options {
 	int sitErrorInp;
 	IntVec dropPacket;
 	IntVec loseAck;
-	
+
 	//Converts server options to a JSON
 	string toJson(){
 		pt::ptree pkt;
@@ -316,30 +318,30 @@ struct srv_options {
 		pkt.put("seqLower", seqLower);
 		pkt.put("seqUpper", seqUpper);
 		pkt.put("sitErrorInp", sitErrorInp);
-		
+
 		pt::ptree dropPacketArr;
 		int j = 0;
-					
+
 		for(int i : dropPacket){
 			pt::ptree element;
 			element.put(std::to_string(j), i);
 			dropPacketArr.push_back(pt::ptree::value_type("", element));
 			j++;
 		}
-		
+
 		pkt.put_child("dropPacket", dropPacketArr);
-		
-		
+
+
 		pt::ptree loseAckArr;
 		j = 0;
-					
+
 		for(int i : loseAck){
 			pt::ptree element2;
 			element2.put(std::to_string(j), i);
 			dropPacketArr.push_back(pt::ptree::value_type("", element2));
 			j++;
 		}
-		
+
 		pkt.put_child("loseAck", loseAckArr);
 
 		std::stringstream ss;
@@ -347,12 +349,12 @@ struct srv_options {
 
 		return ss.str(); //return JSON Options
 	}
-	
+
 	string toString(){
 		string c = "Server Options: \n\nProtocol Type: " + std::to_string(proType) + " \nPacket Size: " + std::to_string(packetSize) + " \nTimeout Interval: " + std::to_string(timeout) + " \nSliding Window Size: " + std::to_string(slidingWinSize);
 		c = c + " \nSequence Range: " + std::to_string(seqLower) + " to " + std::to_string(seqUpper) + " inclusive." + " \nType of Situational Error: " + std::to_string(sitErrorInp) + "\n\n";
-		
-		
+
+
 		if(sitErrorInp == 3) {
 			c = c + "Packet numbers to be lost: ";
 			for(int n : dropPacket){
@@ -368,23 +370,23 @@ struct srv_options {
 
 			c = c + "\n";
 		}
-		
-		
+
+
 		return c;
 	}
-	
+
 }; //end struct
 
 //Build server options from json. Used by readSrvOp
 srv_options srvOpData(srv_options srv, std::string json){
-	
+
 	//Stream the json
 	std::stringstream ss;
 	ss << json;
-	
+
 	pt::ptree reader;
 	pt::read_json(ss, reader);
-	
+
 	srv.proType = reader.get<int>("proType");
 	srv.packetSize = reader.get<int>("packetSize");
 	srv.timeout = reader.get<int>("timeout");
@@ -392,31 +394,31 @@ srv_options srvOpData(srv_options srv, std::string json){
 	srv.seqLower = reader.get<int>("seqLower");
 	srv.seqUpper = reader.get<int>("seqUpper");
 	srv.sitErrorInp = reader.get<int>("sitErrorInp");
-	
+
 	IntVec dropP;
-	
+
 	pt::ptree &array = reader.get_child("dropPacket");
 	int j = 0;
 	for(pt::ptree::iterator element = array.begin(); element != array.end(); element++){
 		dropP.push_back(element->second.get<int>(std::to_string(j)));
 		j++;
 	}
-	
+
 	srv.dropPacket = dropP;
-	
-	
+
+
 	IntVec loseA;
-	
+
 	pt::ptree &array2 = reader.get_child("dropPacket");
 	j = 0;
 	for(pt::ptree::iterator element = array2.begin(); element != array2.end(); element++){
 		loseA.push_back(element->second.get<int>(std::to_string(j)));
 		j++;
 	}
-	
+
 	srv.loseAck = loseA;
-	
-	
+
+
 	return (srv);
 }
 
@@ -424,7 +426,7 @@ srv_options srvOpData(srv_options srv, std::string json){
 srv_options readSrvOp(string srv) {
 	srv_options s;
 	s = srvOpData(s, srv);
-	
+
 	return s;
 }
 
@@ -471,23 +473,23 @@ int writeFile(PacketStream *packets, string fPath){
 		cout << "Writing file..." << endl;
 		ofstream outfile;
 		outfile.open(fPath, ios::out | ios::binary);
-		
+
 
 		std::vector<char> file;
 		std::string t_bod = "";
-		
+
 		for(tcp_packet p : *packets){
 			t_bod = p.body;
 			for(char c : t_bod){
 				file.push_back(c);
 			}
 		}
-		
-		
+
+
 		outfile.write (&file[0], file.size());
-		
+
 		outfile.close();
-		
+
 		cout << "Successfully saved the file to: " << fPath << endl;
 		return 0;
 	} catch(int e){
@@ -503,26 +505,26 @@ string read_(tcp::socket & socket, boost::asio::streambuf & receive_buffer) {
 		boost::system::error_code error;
 
 		std::string data;
-		
+
 		boost:asio:read_until(socket, receive_buffer, delim, error);
-			
+
 		if( error && error != boost::asio::error::eof ) {
 			cout << "receive failed: " << error.message() << endl;
 		}
 		else {
 			std::istream is(&receive_buffer);
-			
+
 			while(std::getline(is, data)) {
 				fin = fin + data;
 			}
-			
+
 		}
-		
+
 	//fin.pop_back(); //remove eto
 	fin.pop_back(); //remove etx
-	
+
 	fin = base64_decode(fin);
-	
+
     return fin; //return final data
 }
 
@@ -530,7 +532,7 @@ void send_(tcp::socket & socket, const string& message) {
 	const string msg = base64_encode(message) + delim;
 	boost::system::error_code error;
     boost::asio::write( socket, boost::asio::buffer(msg), error );
-	
+
     if( !error ) {
        //cout << "Sent: " << message << endl;
 	   cout << "Sent." << endl;
@@ -538,15 +540,16 @@ void send_(tcp::socket & socket, const string& message) {
     else {
        cout << "send failed: " << error.message() << endl;
     }
-	
+
        //const string msg = message + "|";
        //boost::asio::write( socket, boost::asio::buffer(message) );
 }
 
 std::string make_string(boost::asio::streambuf& streambuf) {
-  return {boost::asio::buffers_begin(streambuf.data()), 
+  return {boost::asio::buffers_begin(streambuf.data()),
           boost::asio::buffers_end(streambuf.data())};
 }
+
 
 PacketStream fileread_(tcp::socket & socket, boost::asio::streambuf & receive_buffer) {
 		cout << "Reading file..." << endl;
@@ -556,15 +559,31 @@ PacketStream fileread_(tcp::socket & socket, boost::asio::streambuf & receive_bu
 		std::string fin = "";
 		PacketStream packets;
 		string ackit = getConstStr(ACK);
-		
+
 	bool loop = true;
-		
+
 	while (loop){
 		fin = "";
 		data = "";
-		
-		boost:asio:read_until(socket, receive_buffer, delim, error);
-		
+
+		auto status = std::async(std::launch::async, [&] (){ boost:asio:read_until(socket, receive_buffer, delim, error); })
+    .wait_for(std::chrono::milliseconds{ 1 });
+switch (status)
+    {
+    case std::future_status::deferred:
+    //... should never happen with std::launch::async
+        break;
+    case std::future_status::ready:
+    //...
+        break;
+    case std::future_status::timeout:
+    //...
+        break;
+    }
+
+
+
+
 		if( error && error != boost::asio::error::eof ) {
 			cout << "receive failed: " << error.message() << endl;
 		}
@@ -575,35 +594,35 @@ PacketStream fileread_(tcp::socket & socket, boost::asio::streambuf & receive_bu
 			}
 			//cout << "Curr Fin: " << fin << endl;
 			//cout << "Curr data: " << data << endl;
-			
+
 		}
-		
+
 		fin.pop_back(); //remove etx
-		
+
 		//cout << "Got: " << fin << endl;
 		cout << "Got a packet :)" << endl;
-		
+
 		try{
 			fin = base64_decode(fin);
 		} catch (int a){
 			cout << "Uh oh!" << endl;
 		}
-		
+
 		//cout << "Decoded: " << fin << endl;
-		
-		
+
+
 		if(fin != "leave"){
-			packets.push_back(readPacket(fin));			
+			packets.push_back(readPacket(fin));
 			send_(socket, ackit);
-			
+
 		} else {
 			cout << endl << "Finished up. On to the next thing." << endl;
 			loop = false;
 			send_(socket, ackit);
 		}
-		
+
 	}
-	
+
     return packets; //return final data
 }
 
@@ -613,7 +632,7 @@ std::string pack(tcp_header *head, string *bod) {
 	h = *head;
 	packs.header = h.toJson();
 	packs.body = *bod;
-	
+
 	return packs.toJson();
 }
 
@@ -630,45 +649,45 @@ int main() {
 
 //connection
     socket.connect( tcp::endpoint( boost::asio::ip::address::from_string(HOST), PORT ));
-	
+
 	boost::asio::streambuf receive_buffer;
 
 // request/message from client
     const string msg = "hey its me, i miss u...\n";
     boost::system::error_code error;
-	
+
 	send_(socket, msg);
-	
-	
+
+
 // getting a response from the server
-	
+
 	//socket.wait(boost::asio::ip::tcp::socket::wait_read);
     string message = read_(socket, receive_buffer);
-	
-	
-	cout << "Server sent: " << message << endl;
-	
 
-	
+
+	cout << "Server sent: " << message << endl;
+
+
+
 	//socket.wait(boost::asio::ip::tcp::socket::wait_read);
 	cout << "Getting Server Configuration.." << endl;
-	
-	
+
+
 	//Load configuration
 	string configJson = read_(socket, receive_buffer);
-	
-	
+
+
 	srv_options server_config;
 	server_config = readSrvOp(configJson);
-	
+
 	cout << endl << "Configuration Loaded! Current Config: " << endl << endl << server_config.toString() << endl;
-	
-	
+
+
 	//read_ returns the json of a packet
 	PacketStream packs = fileread_(socket, receive_buffer);
-	
+
 	cout << "Read complete." << endl;
-	
+
 	writeFile(&packs, "client_out");
 
 
