@@ -11,6 +11,7 @@
 #include <future>
 #include <chrono>
 #include <bitset>
+#include <cmath>
 
 using boost::asio::steady_timer;
 using boost::asio::ip::tcp;
@@ -294,6 +295,19 @@ int getSeqNum(int last, int upper, int lower) {
 		return lower; //wrap
 	} else if(last >= lower && last < upper){
 		return last + 1; //normal case
+	}
+
+	//Shouldn't get here smh. this should crash if assigning to the uint.
+	return -1;
+
+}
+
+//Gets a sequence number given the last number in sequence and the range to wrap on.
+int lastSeqNum(int curr, int upper, int lower) {
+	if(curr == lower){
+		return upper; //wrap
+	} else{
+		return curr - 1; //normal case
 	}
 
 	//Shouldn't get here smh. this should crash if assigning to the uint.
@@ -696,6 +710,7 @@ private:
 	curr_frame = 0;
 
 	currAck = 1;
+	protocol = srvOp.proType;
 
 	cout << "Reading... " << endl;
 	  //read_ returns the json of a packet
@@ -820,14 +835,14 @@ string read_() {
 	   } else { //Default case. This is a packet so read it into packets
 			bool isvalid;
 			curr_pack = readPacket(line);
-			curr_head = readHeader(curr_pack.header)
+			curr_head = readHeader(curr_pack.header);
 			//DO STUFF
 			
 			//validate checksum
 			isvalid = validateChecksum(readHeader(curr_pack.header), srvOp.packetSize);
 			
 			if(isvalid){
-				cout << "valid " << endl;
+				//cout << "valid " << endl;
 			} else {
 				cout << "not valid checksum! " << endl;
 			}
@@ -852,11 +867,17 @@ string read_() {
 			
 			//check seq nums
 			seq_curr = curr_head.seq_num;
-			
 			if(seq_last == 0){
 				seq_last = seq_curr;
 			} else {
-				
+				if(seq_last != lastSeqNum(seq_curr, srvOp.seqLower, srvOp.seqUpper)){ //we missed something!!
+					switch(protocol){
+						case 1: //GBN
+							break;
+						case 2: //SR
+							break;
+					}
+				}//end missed
 			}
 			
 			
@@ -867,7 +888,7 @@ string read_() {
 				currAck++;
 				sendAck = false;
 		  }	
-			
+			seq_last = seq_curr; //set last
 			packets.push_back(curr_pack);
 			//send_(ackit);
 			start_read();
@@ -989,6 +1010,11 @@ private:
 	uint32_t lastPcktSeqNum;
 	int originialPackets;
 	int retransmittedPackets;
+	
+	int protocol;
+//protocol numbers:
+// 1 -> GBN
+// 2 -> SR
 	
 
 };

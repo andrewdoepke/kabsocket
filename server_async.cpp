@@ -843,7 +843,7 @@ void advanceHeader(tcp_header *last, srv_options *srvOp, uint8_t flag){
 			std::string complimentChecksum = onesCompliment(sumNumTotal);
 			uint16_t checker = (uint16_t)((std::bitset<16>(complimentChecksum)).to_ulong());
 			
-			cout << "checker val = " << checker << " and complimentChecksum = " << complimentChecksum << endl;
+			//cout << "checker val = " << checker << " and complimentChecksum = " << complimentChecksum << endl;
 			
 			return checker;
 	}
@@ -1096,7 +1096,7 @@ string read_() {
 	   send_(finish);
 
 		cout << "waiting for ACK to end..." << endl;
-		waitForAck(&currAck. &other); //final wait for the ack, since we finished. This will always have to happen
+		waitForAck(&currAck, &other); //final wait for the ack, since we finished. This will always have to happen
 		
 	//OUTPUT	
 	printOutput();
