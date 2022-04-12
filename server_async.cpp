@@ -1078,9 +1078,20 @@ string read_() {
 		waitForAck(&currAck); //final wait for the ack, since we finished. This will always have to happen
 		
 	//OUTPUT	
+	printOutput();
 	
 	  cout << "Finished processing this one." << endl << endl;
   }
+
+  void printOutput() {
+  	cout << "Session successfully terminated" << endl << endl;
+
+  	cout << "Number of original packets sent: " << sentPackets << endl;
+	cout << "Number of retransmitted packets: " << retransmittedPackets << endl;
+	cout << "Total elapsed time: " << elapsedTime << endl;
+	cout << "Total throughput (Mbps): " << throughputTotal << endl;
+	cout << "Effective throughput: " << effThroughput << endl;
+}
 
 private:
   tcp_connection(boost::asio::io_context& io_context)
@@ -1097,12 +1108,18 @@ private:
 
 
 
-std::string input_buffer_;
-string thisguy;
-  tcp::socket socket_;
-  std::string message_;
-  bool needAck;
+	std::string input_buffer_;
+  	string thisguy;
+  	tcp::socket socket_;
+  	std::string message_;
+  	bool needAck;
 
+  	// Declare the output variables
+  	int sentPackets;
+	int retransmittedPackets;
+	double elapsedTime;
+	double throughputTotal;
+	double effThroughput;
 };
 
 class tcp_server
@@ -1142,6 +1159,8 @@ private:
   boost::asio::io_context& io_context_;
   tcp::acceptor acceptor_;
 };
+
+
 
 int main(int argc, char *argv[]) {
 	

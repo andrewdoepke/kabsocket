@@ -792,7 +792,7 @@ string read_() {
 		writeFile(&packets, "client_out");
 		
 		//OUTPUT
-		
+		printOutput();
 		
 		//close client
 		socket_.close();
@@ -925,6 +925,12 @@ string read_() {
     deadline_.async_wait(boost::bind(&client::check_deadline, this));
   }
 
+  void printOutput() {
+		cout << "Last packet seq# received: " << lastPcktSeqNum << endl;
+		cout << "Number of original packets received: " << originialPackets << endl;
+		cout << "Number of retransmitted packets received: " << retransmittedPackets << endl;
+	}
+
 private:
   bool stopped_;
 	bool timed;
@@ -944,7 +950,16 @@ private:
 	int curr_frame;
 
 	int currAck;
+
+	// Declare the output variables
+	uint32_t lastPcktSeqNum;
+	int originialPackets;
+	int retransmittedPackets;
+	
+
 };
+
+
 
 int main(int argc, char* argv[])
 {
