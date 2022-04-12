@@ -1189,7 +1189,7 @@ string read_() {
 		cout << "waiting for ACK to end..." << endl;
 		waitForAck(&currAck, &other); //final wait for the ack, since we finished. This will always have to happen
 
-	elapsedTime = clock() - startTime; //variable here 
+	elapsedTime = (clock() - startTime)/CLOCKS_PER_SEC; //variable here 
 		
 	//OUTPUT	
 	printOutput();
