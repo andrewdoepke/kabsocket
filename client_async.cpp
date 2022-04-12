@@ -234,7 +234,7 @@ tcp_packet packData(tcp_packet pack, string json){
 	pt::read_json(ss, reader);
 
 	pack.header = reader.get<string>("header");
-	pack.body = base64_decode(reader.get<string>("body"));
+	pack.body = reader.get<string>("body");
 
 	return (pack);
 }
@@ -465,7 +465,8 @@ int writeFile(PacketStream *packets, string fPath){
 
 		for(tcp_packet p : *packets){
 			t_bod = p.body;
-			t_bod = base64_decode(t_bod);
+			//cout << "t bod = " << t_bod << endl;
+			t_bod = base64_decode(t_bod); 
 			for(char c : t_bod){
 				file.push_back(c);
 			}
@@ -749,8 +750,9 @@ string read_() {
 	   try{
 		data = base64_decode(data);
 	   } catch (std::exception e) {
-		   //cout << "dang " << endl;
-		   return data;
+		   cout << "dang " << endl;
+		   cout << data << endl;
+		   return "bad";
 	   }
 
 	   //cout << "Read: " << data << endl;
@@ -847,11 +849,12 @@ string read_() {
 		writeFile(&packets, "client_out");
 		
 		//OUTPUT
-		printOutput();
+		//printOutput();
 		
 		//close client
 		socket_.close();
 		stop();
+		return;
 
 	   } else { //Default case. This is a packet so read it into packets
 			bool isvalid;
@@ -886,8 +889,12 @@ string read_() {
 				seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
 			} else {
 				int expectedlast = lastSeqNum(seq_curr, seqHi, seqLow);
-				//cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
-				if(seq_last != expectedlast){ //we missed something!!
+				cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
+				if(seq_last != expectedlast){
+					resended = true;
+				}
+				
+				if(resended){ //we missed something!!
 					std::string aya = "";
 					std::string linea = "";
 					size_t len;
@@ -902,17 +909,18 @@ string read_() {
 							cout << "here" << endl;
 							
 							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
-							for(int f = curr_frame; f > win_start; f--){
+							for(int f = curr_frame - 1; f > win_start; f--){
 								packets.pop_back();
 								//cout << "f = " << f << endl;
 								seq_last = lastSeqNum(seq_last, seqHi, seqLow);
 								//cout << "sequence is " << seq_last << endl;;
 							}
 							
-							seq_curr = seq_last;
+							seq_curr = lastSeqNum(seq_last, seqHi, seqLow);
 							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
 							
 							cout << "new curr sequence: " << seq_curr << endl;
+							cout << "new last sequence: " << seq_last << endl;
 							
 							//reinit the window and frame
 							curr_frame = win_start;

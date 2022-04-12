@@ -725,7 +725,7 @@ void stageFile(int packetSize, std::vector<char> *buff, StrVec *out) {
 			 }
 			 cout << "Bytes left to go: " << progCount << endl;
 			
-			tempbod = base64_encode(tempbod);
+			//tempbod = base64_encode(tempbod);
 			
 			 out->push_back(tempbod);
 	   }//end while
@@ -949,7 +949,11 @@ string read_() {
 	   //data.pop_back();
 
 	   //decode data
-	   data = base64_decode(data);
+	   try{
+		data = base64_decode(data);
+	   } catch(std::exception e){
+		   return "bad";
+	   }
 
 	   //cout << "Read: " << data << endl;
 	}
@@ -1083,6 +1087,7 @@ string read_() {
 			
 
 			curr_packet.body = base64_encode(b); //encode the body..
+			//cout << "body encodded " << curr_packet.body << endl;
 			curr_packet.header = curr_head.toJson(); //Set the current packet header
 
 			tempPack = curr_packet.toJson();
@@ -1109,13 +1114,11 @@ string read_() {
 				
 				cout << "Resending..." << endl;						
 				
-				while (she != "GO"){	
+				while (she != "GO"){
 					//cout << "waiting for the go ahead to resend" << endl;
 					she = read_();
+					send_("HOLUP");
 					//cout << "got: " << she << endl;
-					if(she == "GIVEMEHOLUP"){
-						send_("HOLUP");
-					}
 				}
 				
 				cout << "Confirmed. Handle protocol!" << endl;
@@ -1176,7 +1179,7 @@ string read_() {
 		waitForAck(&currAck, &other); //final wait for the ack, since we finished. This will always have to happen
 		
 	//OUTPUT	
-	printOutput();
+	//printOutput();
 	
 	  cout << "Finished processing this one." << endl << endl;
   }
