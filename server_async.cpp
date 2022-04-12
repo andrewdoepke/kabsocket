@@ -1110,9 +1110,9 @@ string read_() {
 				cout << "Resending..." << endl;						
 				
 				while (she != "GO"){	
-					cout << "waiting for the go ahead to resend" << endl;
+					//cout << "waiting for the go ahead to resend" << endl;
 					she = read_();
-					cout << "got: " << she << endl;
+					//cout << "got: " << she << endl;
 					if(she == "GIVEMEHOLUP"){
 						send_("HOLUP");
 					}

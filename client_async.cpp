@@ -833,7 +833,7 @@ string read_() {
 		start_read();
 		return;
 	}
-	cout << "line decoded: " << line << endl;
+	//cout << "line decoded: " << line << endl;
 
 
 	  //line is now the string we were sent!
@@ -856,7 +856,14 @@ string read_() {
 	   } else { //Default case. This is a packet so read it into packets
 			bool isvalid;
 			bool resended = false;
-			curr_pack = readPacket(line);
+			
+			try {
+				curr_pack = readPacket(line);
+			} catch (std::exception e){
+				cout << "uh oh" << endl;
+				start_read();
+				return;
+			}
 			curr_head = readHeader(curr_pack.header);
 			//DO STUFF
 			
@@ -894,10 +901,18 @@ string read_() {
 							//pop back entire frame
 							cout << "here" << endl;
 							
+							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
 							for(int f = curr_frame; f > win_start; f--){
 								packets.pop_back();
-								cout << "f = " << f << endl;
+								//cout << "f = " << f << endl;
+								seq_last = lastSeqNum(seq_last, seqHi, seqLow);
+								//cout << "sequence is " << seq_last << endl;;
 							}
+							
+							seq_curr = seq_last;
+							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
+							
+							cout << "new curr sequence: " << seq_curr << endl;
 							
 							//reinit the window and frame
 							curr_frame = win_start;
@@ -912,10 +927,12 @@ string read_() {
 							}
 							
 							cout << "got here!" << endl;
+							
 							send_("GO");
 							
 							sendAck = false;
 							start_read();
+							return;
 							break;
 						case 2: //SR
 							break;
