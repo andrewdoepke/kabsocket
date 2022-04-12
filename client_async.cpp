@@ -538,25 +538,40 @@ int writeFile(PacketStream *packets, string fPath){
 			std::bitset<16> carriesBin(numCarries);
 
 			sumNumTotal = sumNum(sumNumTotal, carriesBin.to_string(), &numCarries);
-
+			
+			
 			numCarries = 0; 
 
 			// Find the checksum value (the one's compliment of the sumNumTotal)
 			std::string complimentChecksum = onesCompliment(sumNumTotal);
-
+			
+			
 			// Sum the sumNumTotal and complimentChecksum value
 			std::string checksum = sumNum(currChecksum.to_string(), complimentChecksum, &numCarries);
 
 			// Take the one's compliment of the checksum value (should be 0 if no errors, anything else is an error)
 			std::string checksumValue = onesCompliment(checksum);
 			std::bitset<16> checksumBits(checksumValue);
-
+			
+			
+			//cout << "" << << endl;
+			cout << "Checksum Value  = " << complimentChecksum << endl;
+			cout << "summed = " << checksum << endl; //should = 1111111111111111
+			cout << "after onesCompliment " <<  checksumValue << endl; //should = 0000000000000000
+			
 			// If there was an error in the transmission
 			if (checksumBits.to_ulong() != 0) {
 				return false;
 			} else { 
 				return true;
 			}
+			
+			/*
+			//cout << "Checksum Value  = " << complimentChecksum << endl;
+			//cout << "original value = " << currChecksum << endl;
+			
+			return complimentChecksum == currChecksum.to_string();
+			*/
 	}
 
 
@@ -807,9 +822,9 @@ string read_() {
 			isvalid = validateChecksum(readHeader(curr_pack.header));
 			
 			if(isvalid){
-				
+				cout << "valid " << endl;
 			} else {
-				
+				cout << "not valid checksum! " << endl;
 			}
 			
 			cout << "window end: " << win_end << endl;

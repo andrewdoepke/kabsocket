@@ -841,6 +841,9 @@ void advanceHeader(tcp_header *last, srv_options *srvOp, uint8_t flag){
 			// Find the checksum value (the one's compliment of the sumNumTotal)
 			std::string complimentChecksum = onesCompliment(sumNumTotal);
 			uint16_t checker = (uint16_t)((std::bitset<16>(complimentChecksum)).to_ulong());
+			
+			cout << "checker val = " << checker << " and complimentChecksum = " << complimentChecksum << endl;
+			
 			return checker;
 	}
 
