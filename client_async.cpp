@@ -511,7 +511,7 @@ int writeFile(PacketStream *packets, string fPath){
 		return complimentStr;
 	}
 	
-	bool validateChecksum(tcp_header curr){
+	bool validateChecksum(tcp_header curr, int packetSize){
 			// Validate checksum
 			std::string sumNumTotal = "";
 			std::bitset<16> emptyBits; // all 16 bits initialized to 0 for initial sum
@@ -523,6 +523,7 @@ int writeFile(PacketStream *packets, string fPath){
 			std::bitset<16> currFlag(curr.flag);
 			std::bitset<16> currWindow(curr.window);
 			std::bitset<16> currChecksum(curr.checksum);
+			std::bitset<16> currSize(packetSize);
 
 
 			int numCarries = 0; // How many times the sum will wrap/carry over
@@ -534,6 +535,7 @@ int writeFile(PacketStream *packets, string fPath){
 			sumNumTotal = sumNum(sumNumTotal, currOffset.to_string(), &numCarries);
 			sumNumTotal = sumNum(sumNumTotal, currFlag.to_string(), &numCarries);
 			sumNumTotal = sumNum(sumNumTotal, currWindow.to_string(), &numCarries);
+			sumNumTotal = sumNum(sumNumTotal, currSize.to_string(), &numCarries);
 
 			std::bitset<16> carriesBin(numCarries);
 
@@ -547,7 +549,7 @@ int writeFile(PacketStream *packets, string fPath){
 			
 			
 			// Sum the sumNumTotal and complimentChecksum value
-			std::string checksum = sumNum(currChecksum.to_string(), complimentChecksum, &numCarries);
+			std::string checksum = sumNum(sumNumTotal, complimentChecksum, &numCarries);
 
 			// Take the one's compliment of the checksum value (should be 0 if no errors, anything else is an error)
 			std::string checksumValue = onesCompliment(checksum);
@@ -819,7 +821,7 @@ string read_() {
 			//DO STUFF
 			
 			//validate checksum
-			isvalid = validateChecksum(readHeader(curr_pack.header));
+			isvalid = validateChecksum(readHeader(curr_pack.header), srvOp.packetSize);
 			
 			if(isvalid){
 				cout << "valid " << endl;

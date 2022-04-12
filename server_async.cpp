@@ -809,7 +809,7 @@ void advanceHeader(tcp_header *last, srv_options *srvOp, uint8_t flag){
 		return complimentStr;
 	}
 
-	uint16_t generateChecksum(tcp_header curr){
+	uint16_t generateChecksum(tcp_header curr, int packetSize){
 			// Validate checksum
 			std::string sumNumTotal = "";
 			std::bitset<16> emptyBits; // all 16 bits initialized to 0 for initial sum
@@ -820,7 +820,7 @@ void advanceHeader(tcp_header *last, srv_options *srvOp, uint8_t flag){
 			std::bitset<16> currOffset(curr.offset);
 			std::bitset<16> currFlag(curr.flag);
 			std::bitset<16> currWindow(curr.window);
-
+			std::bitset<16> currSize(packetSize);
 
 			int numCarries = 0; // How many times the sum will wrap/carry over
 
@@ -831,6 +831,7 @@ void advanceHeader(tcp_header *last, srv_options *srvOp, uint8_t flag){
 			sumNumTotal = sumNum(sumNumTotal, currOffset.to_string(), &numCarries);
 			sumNumTotal = sumNum(sumNumTotal, currFlag.to_string(), &numCarries);
 			sumNumTotal = sumNum(sumNumTotal, currWindow.to_string(), &numCarries);
+			sumNumTotal = sumNum(sumNumTotal, currSize.to_string(), &numCarries);
 
 			std::bitset<16> carriesBin(numCarries);
 
