@@ -722,7 +722,7 @@ string read_() {
 				
 			} else {
 				cout << "shift from " << curr_frame << " to " << (curr_frame + 1) << endl;
-				curr_frame++;//move right
+				curr_frame++; //move right
 			}
 			
 			
