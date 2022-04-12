@@ -11,6 +11,7 @@
 #include <random>
 #include "base64.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <filesystem>
 
 using namespace boost::asio;
 namespace bs = boost::system;
@@ -1065,11 +1066,26 @@ private:
   tcp::acceptor acceptor_;
 };
 
-int main() {
+int main(int argc, char *argv[]) {
+	
+	if(argc < 2){
+		cout << "Please append a filename to the run command." << endl;
+		return 1;
+	}
+	string filePath = argv[1]; //take filename as cmd input
+	
+	//check if file exists
+	if(!std::filesystem::exists(filePath)){
+		cout << "File doesn't exist. Retry running." << endl;
+		return 1;
+	}
+	
 	//Take user input
 	srvOp = userInput(srvOp);
 	cout << "Loading File..." << endl;
-	string filePath = "hi.txt";
+	//string filePath = "hi.txt";
+
+	
 	loadFile(&srvOp, filePath);
   try {
     boost::asio::io_context io_context;
