@@ -724,7 +724,9 @@ void stageFile(int packetSize, std::vector<char> *buff, StrVec *out) {
 				progCount = 0;
 			 }
 			 cout << "Bytes left to go: " << progCount << endl;
-
+			
+			tempbod = base64_encode(tempbod);
+			
 			 out->push_back(tempbod);
 	   }//end while
 }
@@ -847,6 +849,20 @@ void advanceHeader(tcp_header *last, srv_options *srvOp, uint8_t flag){
 			
 			return checker;
 	}
+	
+	
+	//Gets a sequence number given the last number in sequence and the range to wrap on.
+int lastSeqNum(int curr, int upper, int lower) {
+	if(curr == lower){
+		return upper; //wrap
+	} else{
+		return curr - 1; //normal case
+	}
+
+	//Shouldn't get here smh. this should crash if assigning to the uint.
+	return -1;
+
+}
 
 //----------------------------------------------Begin Server------------------------------------------------------//
 
@@ -1036,16 +1052,19 @@ string read_() {
 		
 		bool advance;
 		
+		bool first = true;
+		
 		int currAck = 1; //current ack
 		
 		int curr_frame = 0; //current frame number within window
 		
 		
 		for(i = 0; i < limit; i++){ //begin building and sending all packets. Flow of program managed by this
-			b = bodies[i]; //Current body unencoded
+			b = bodies[i]; //Current body encoded
 			advance = true;
-			if(i == 0){ //first iteration
+			if(first){ //first iteration
 				curr_head = initHeader(options);
+				first = false;
 			} else { //advance our header
 			int currr = curr_head.seq_num;
 			//cout << "current sequence before: " << curr_head.seq_num << endl;
@@ -1088,15 +1107,18 @@ string read_() {
 				other = "a"; //random string
 				string she = "";
 				
-				//doesn't seem to work. we need to clear the buffer client side i think
+				cout << "Resending..." << endl;						
 				
-										
-				send_("HOLUP");
-				
-				while (she != "GO"){
+				while (she != "GO"){	
 					cout << "waiting for the go ahead to resend" << endl;
 					she = read_();
+					cout << "got: " << she << endl;
+					if(she == "GIVEMEHOLUP"){
+						send_("HOLUP");
+					}
 				}
+				
+				cout << "Confirmed. Handle protocol!" << endl;
 				//handle resending
 				switch(protocol){
 					case 1: //GBN
@@ -1108,11 +1130,15 @@ string read_() {
 						
 						cout << "Lost a packet! Resending frame starting at " << win_start << "..." << endl;
 						//pop back entire frame
-						for(int j = 0; j < curr_frame; j++){
-							i--;
+						i -= winSize;
+						
+						for(int f = 0; f < winSize; f++){
+							curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
 						}
 						
-
+						cout << "new starting packet: " << i << " with seq num " << curr_head.seq_num << endl;
+						curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
+						
 						advance = false;
 						break;
 					case 2: //SR

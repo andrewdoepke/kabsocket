@@ -465,6 +465,7 @@ int writeFile(PacketStream *packets, string fPath){
 
 		for(tcp_packet p : *packets){
 			t_bod = p.body;
+			t_bod = base64_decode(t_bod);
 			for(char c : t_bod){
 				file.push_back(c);
 			}
@@ -695,7 +696,7 @@ private:
 	cout << "Getting Server Configuration.." << endl;
 
 
-	//Load configuration. calling read_() starts the read listener
+	//Load configuration
 	string configJson = read_();
 	send_("ACK");
 
@@ -715,6 +716,7 @@ private:
 	
 	seq_curr = 0;
 	seq_last = 0;
+	packInd = 0;
 	
 	seqLow = srvOp.seqLower;
 	seqHi = srvOp.seqUpper;
@@ -742,13 +744,13 @@ string read_() {
 
 	   data.pop_back();
 	   //data.pop_back();
-		cout << "data before decode: " << data << endl;
+		//cout << "data before decode: " << data << endl;
 	   //decode data
 	   try{
 		data = base64_decode(data);
 	   } catch (std::exception e) {
-		   cout << "dang " << endl;
-		   return "bad";
+		   //cout << "dang " << endl;
+		   return data;
 	   }
 
 	   //cout << "Read: " << data << endl;
@@ -821,9 +823,17 @@ string read_() {
       // Extract the newline-delimited message from the buffer.
       std::string line(input_buffer_.substr(0, n - 1));
       input_buffer_.erase(0, n);
-
-	line = base64_decode(line);
+	  
+	  //cout << "line before: " << line << endl;
 	
+	try {
+		line = base64_decode(line);
+	} catch (std::exception e) {
+		cout << "baddy" << endl;
+		start_read();
+		return;
+	}
+	cout << "line decoded: " << line << endl;
 
 
 	  //line is now the string we were sent!
@@ -845,6 +855,7 @@ string read_() {
 
 	   } else { //Default case. This is a packet so read it into packets
 			bool isvalid;
+			bool resended = false;
 			curr_pack = readPacket(line);
 			curr_head = readHeader(curr_pack.header);
 			//DO STUFF
@@ -871,31 +882,40 @@ string read_() {
 				//cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
 				if(seq_last != expectedlast){ //we missed something!!
 					std::string aya = "";
+					std::string linea = "";
+					size_t len;
+					string readit;
+					
 					switch(protocol){
 						case 1: //GBN
+							//resend
 							send_("RESEND"); //tell server to resend.
-							
+							resended = true;
 							//pop back entire frame
 							cout << "here" << endl;
-							for(int j = 0; j < curr_frame; j++){
-								if(j < packets.size()){
-									packets.pop_back();
-								}
+							
+							for(int f = curr_frame; f > win_start; f--){
+								packets.pop_back();
+								cout << "f = " << f << endl;
 							}
 							
 							//reinit the window and frame
 							curr_frame = win_start;
 							
+							cout << "shift frame back to " << curr_frame << endl;
+													
 							while(aya != "HOLUP"){
 								cout << "waiting....." << endl;
 								aya = read_();
+								send_("GIVEMEHOLUP");
+								//clear input
 							}
 							
+							cout << "got here!" << endl;
 							send_("GO");
 							
-							//carry on
+							sendAck = false;
 							start_read();
-							return;
 							break;
 						case 2: //SR
 							break;
@@ -934,9 +954,11 @@ string read_() {
 			seq_last = seq_curr; //set last
 			//cout << "last after: " << seq_last;
 			packets.push_back(curr_pack);
+			//packets[packInd] = curr_pack;
+			packInd++;
 			//send_(ackit);
 			start_read();
-		}
+	   }
 	
 
     } else {
@@ -1050,6 +1072,8 @@ private:
 	int win_start;
 	int win_end;
 	int curr_frame;
+	
+	int packInd;
 
 	int currAck;
 
