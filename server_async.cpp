@@ -1057,7 +1057,7 @@ string read_() {
 				cout << "current frame " << curr_frame << " and the final index was " << (limit-1) << endl;
 			}
 			
-			curr_head.checksum = generateChecksum(curr_head);
+			curr_head.checksum = generateChecksum(curr_head, srvOp.packetSize);
 
 			curr_packet.body = base64_encode(b); //encode the body..
 			curr_packet.header = curr_head.toJson(); //Set the current packet header
