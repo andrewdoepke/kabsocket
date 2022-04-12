@@ -12,6 +12,7 @@
 #include "base64.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <filesystem>
+#include <bitset>
 
 using namespace boost::asio;
 namespace bs = boost::system;
@@ -767,6 +768,82 @@ void advanceHeader(tcp_header *last, srv_options *srvOp, uint8_t flag){
 }
 */
 
+  // String a will be the current sum of the bits
+	// String b is what will be added to the sum
+	std::string sumNum(std::string a, std::string b, int *numCarries) {
+		std::string sum = ""; // This will be the sum result
+		int carry = 0;
+		int size = 16;
+
+		for (int i = size-1; i >= 0; i--) {
+			int bitA = a.at(i) - '0';
+			int bitB = b.at(i) - '0';
+			int bit = (bitA ^ bitB ^ carry) + '0';
+
+			sum = (char)bit + sum;
+			carry = (bitA & bitB) | (bitB & carry) | (bitA & carry);
+		}
+
+
+		// This wraps the bits that have overflowed (if there are multiple 
+		//carries, all happen at once)
+		if (carry) { // 1001 + 1000 = 10001 -> '1' + '0001'
+			numCarries += 1;
+		}
+
+		return sum;
+	}
+
+	// Take the one's compliment of the given string of bits (1001 -> 0110)
+	std::string onesCompliment(std::string str) {
+		std::string complimentStr = "";
+
+		for (int i = 0; i < str.length(); i++) {
+			if (str[i] == '0') {
+				complimentStr += "1";
+			} else if (str[i] == '1') {
+				complimentStr += "0";
+			}
+		}
+
+		return complimentStr;
+	}
+
+	uint16_t generateChecksum(tcp_header curr){
+			// Validate checksum
+			std::string sumNumTotal = "";
+			std::bitset<16> emptyBits; // all 16 bits initialized to 0 for initial sum
+
+			std::bitset<16> currS_Port(curr.s_port);
+			std::bitset<16> currD_Port(curr.d_port);
+			std::bitset<16> currSeq_Num(curr.seq_num);
+			std::bitset<16> currOffset(curr.offset);
+			std::bitset<16> currFlag(curr.flag);
+			std::bitset<16> currWindow(curr.window);
+
+
+			int numCarries = 0; // How many times the sum will wrap/carry over
+
+			// Takes the sum of the packet headers 
+			sumNumTotal = sumNum(emptyBits.to_string(), currS_Port.to_string(), &numCarries);
+			sumNumTotal = sumNum(sumNumTotal, currD_Port.to_string(), &numCarries);
+			sumNumTotal = sumNum(sumNumTotal, currSeq_Num.to_string(), &numCarries);
+			sumNumTotal = sumNum(sumNumTotal, currOffset.to_string(), &numCarries);
+			sumNumTotal = sumNum(sumNumTotal, currFlag.to_string(), &numCarries);
+			sumNumTotal = sumNum(sumNumTotal, currWindow.to_string(), &numCarries);
+
+			std::bitset<16> carriesBin(numCarries);
+
+			sumNumTotal = sumNum(sumNumTotal, carriesBin.to_string(), &numCarries);
+
+			numCarries = 0; 
+
+			// Find the checksum value (the one's compliment of the sumNumTotal)
+			std::string complimentChecksum = onesCompliment(sumNumTotal);
+			uint16_t checker = (uint16_t)((std::bitset<16>(complimentChecksum)).to_ulong());
+			return checker;
+	}
+
 //----------------------------------------------Begin Server------------------------------------------------------//
 
 srv_options srvOp;
@@ -976,7 +1053,7 @@ string read_() {
 				cout << "current frame " << curr_frame << " and the final index was " << (limit-1) << endl;
 			}
 			
-			
+			curr_head.checksum = generateChecksum(curr_head);
 
 			curr_packet.body = base64_encode(b); //encode the body..
 			curr_packet.header = curr_head.toJson(); //Set the current packet header
