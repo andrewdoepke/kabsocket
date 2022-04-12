@@ -578,6 +578,13 @@ private:
 	start_read();
 	
 	sendAck = false; //we don't want to send acks just yet. We will when we have to
+	
+	winSize = srvOp.slidingWinSize;
+	win_start = 0;
+	win_end = winSize - 1;
+	curr_frame = 0;
+
+	currAck = 1;
 
 	cout << "Reading... " << endl;
 	  //read_ returns the json of a packet
@@ -630,6 +637,20 @@ string read_() {
   }
 
 
+
+/* For reference, shit we initialized in this class
+  
+	//init window 
+	int winSize = srvOp.slidingWinSize;
+	int win_start = 0;
+	int win_end = winSize - 1;
+	int curr_frame = 0;
+
+	int currAck = 1;
+
+*/
+
+
 	//Read handler. We are only receiving packets, so this will parse them and do what we need to do.
   void handle_read(const bs::error_code& ec, std::size_t n)
   {
@@ -665,12 +686,7 @@ string read_() {
 
 	line = base64_decode(line);
 	
-	//Send ack 
-      if (!line.empty() && sendAck == true) {
-        //std::cout << "Received: " << line << "\n";
-				send_(ackit);
-      }
-		
+
 
 	  //line is now the string we were sent!
 	  if(line == "EXIT"){
@@ -690,9 +706,35 @@ string read_() {
 		stop();
 
 	   } else { //Default case. This is a packet so read it into packets
+	   
 			curr_pack = readPacket(line);
 			//DO STUFF
+			cout << "window end: " << win_end << endl;
+			//frame shift 	do we need an ack on this one?
+			if(curr_frame == win_end){ //current frame is the final in the window
+				sendAck = true; //we need this, commented out for the time being for testing
+				
+				//shift to next state
+				cout << "shifting beginning of window to " << (win_start + winSize) << endl; 
+				win_start += winSize; //move to next frame outside of the window
+				win_end += winSize;
+				curr_frame = win_start;
+				
+			} else {
+				cout << "shift from " << curr_frame << " to " << (curr_frame + 1) << endl;
+				curr_frame++;//move right
+			}
 			
+			
+			//validate checksum
+			
+		//Send ack 
+		  if (!line.empty() && sendAck == true) { //we should send an ack as main program! so let's iterate the ack num too after we do so
+			//std::cout << "Received: " << line << "\n";
+				send_(ackit);
+				currAck++;
+				sendAck = false;
+		  }	
 			
 			packets.push_back(curr_pack);
 			//send_(ackit);
@@ -742,7 +784,7 @@ string read_() {
     if (!ec)
     {
       // Wait 10 seconds before sending the next heartbeat.
-      heartbeat_timer_.expires_after(boost::asio::chrono::seconds(10));
+      //heartbeat_timer_.expires_after(boost::asio::chrono::seconds(10));
       //heartbeat_timer_.async_wait(boost::bind(&client::start_write, this));
     }
     else
@@ -795,6 +837,14 @@ private:
   steady_timer deadline_;
   steady_timer heartbeat_timer_;
   PacketStream packets;
+  
+	//init window 
+	int winSize;
+	int win_start;
+	int win_end;
+	int curr_frame;
+
+	int currAck;
 };
 
 int main(int argc, char* argv[])

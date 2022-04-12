@@ -509,7 +509,7 @@ srv_options userInput(srv_options server_options){
 
 //Sliding window size
 	while(slidingWinSize < 1){
-		cout << "Please enter sliding window size (in bytes): " << endl;
+		cout << "Please enter sliding window size (positive integer as number of packets in window): " << endl;
 		cin >> inp;
 		if(readIsInt(inp)){//parse the int
 			slidingWinSize = stoi(inp);
@@ -809,7 +809,7 @@ public:
 
 	cout << "Sending Server Config" << endl;
 	send_(srvOp.toJson()); //sends the json of the srvConf
-	cout << "Sent!" << endl;
+	cout << "Sent!" << endl << endl;
 
 	string val = "";
 	
@@ -863,7 +863,7 @@ string read_() {
 	  message_ += delim;
 
 	  //cout << "Sending " << message_ << endl;
-	  cout << "Sent a packet" << endl;
+	  //cout << "Sent a packet" << endl;
 
 	  boost::asio::async_write(socket_, boost::asio::buffer(message_),
         boost::bind(&tcp_connection::handle_write, shared_from_this(),
@@ -915,6 +915,11 @@ string read_() {
 
 		string validate = "";
 		string exit = "EXIT";
+		
+		int protocol = options->proType;
+		//protocol numbers:
+		// 1 -> GBN
+		// 2 -> SR
 
 		//Write all packets individually
 		string tempPack;
@@ -927,14 +932,17 @@ string read_() {
 		int limit = bodies.size();
 		string b;
 		
+		int winSize = srvOp.slidingWinSize;
 		//init window 
 		int win_start = 0;
-		int win_end = srvOp.slidingWinSize;
+		int win_end = winSize - 1; //-1 for zero-indexed shite
 		
-		int currAck = 1;
+		int currAck = 1; //current ack
+		
+		int curr_frame = 0; //current frame number within window
 		
 		
-		for(i = 0; i < limit; i++){
+		for(i = 0; i < limit; i++){ //begin building and sending all packets. Flow of program managed by this
 			b = bodies[i]; //Current body unencoded
 			
 			if(i == 0){ //first iteration
@@ -948,6 +956,24 @@ string read_() {
 			
 			//Load checksum into header
 			
+			//frame shift 	do we need an ack on this one?
+			if(curr_frame == win_end){ //current frame is the final in the window
+				needAck = true; //we need this, commented out for the time being for testing
+				
+				//shift to next state
+				cout << "shifting beginning of window to " << (win_start + winSize) << endl; 
+				win_start += winSize; //move to next frame outside of the window
+				win_end += winSize;
+				curr_frame = win_start;
+				
+			} else {
+				cout << "shift from " << curr_frame << " to " << (curr_frame + 1) << endl;
+				curr_frame++;//move right
+			}
+			
+			if(curr_frame >= limit){ //we're past the end!
+				cout << "current frame " << curr_frame << " and the final index was " << (limit-1) << endl;
+			}
 			
 			
 
@@ -961,7 +987,8 @@ string read_() {
 			
 			if(needAck == true){ //if we need an ack here, wait for it! if it times out here, we can handle it in the function
 				cout << "waiting for ack..." << endl;
-				waitForAck(&currAck);
+				waitForAck(&currAck); //ack number is iterated here!
+				needAck = false;
 			}
 
 		} //end for loop
