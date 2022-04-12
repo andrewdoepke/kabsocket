@@ -10,6 +10,7 @@
 #include "base64.h"
 #include <future>
 #include <chrono>
+#include <bitset>
 
 using boost::asio::steady_timer;
 using boost::asio::ip::tcp;
@@ -469,6 +470,96 @@ int writeFile(PacketStream *packets, string fPath){
 }
 
 
+  // String a will be the current sum of the bits
+	// String b is what will be added to the sum
+	std::string sumNum(std::string a, std::string b, int *numCarries) {
+		std::string sum = ""; // This will be the sum result
+		int carry = 0;
+		int size = 16;
+
+		for (int i = size-1; i >= 0; i--) {
+			int bitA = a.at(i) - '0';
+			int bitB = b.at(i) - '0';
+			int bit = (bitA ^ bitB ^ carry) + '0';
+
+			sum = (char)bit + sum;
+			carry = (bitA & bitB) | (bitB & carry) | (bitA & carry);
+		}
+
+
+		// This wraps the bits that have overflowed (if there are multiple 
+		//carries, all happen at once)
+		if (carry) { // 1001 + 1000 = 10001 -> '1' + '0001'
+			numCarries += 1;
+		}
+
+		return sum;
+	}
+
+	// Take the one's compliment of the given string of bits (1001 -> 0110)
+	std::string onesCompliment(std::string str) {
+		std::string complimentStr = "";
+
+		for (int i = 0; i < str.length(); i++) {
+			if (str[i] == '0') {
+				complimentStr += "1";
+			} else if (str[i] == '1') {
+				complimentStr += "0";
+			}
+		}
+
+		return complimentStr;
+	}
+	
+	bool validateChecksum(tcp_header curr){
+			// Validate checksum
+			std::string sumNumTotal = "";
+			std::bitset<16> emptyBits; // all 16 bits initialized to 0 for initial sum
+
+			std::bitset<16> currS_Port(curr.s_port);
+			std::bitset<16> currD_Port(curr.d_port);
+			std::bitset<16> currSeq_Num(curr.seq_num);
+			std::bitset<16> currOffset(curr.offset);
+			std::bitset<16> currFlag(curr.flag);
+			std::bitset<16> currWindow(curr.window);
+
+			int numCarries = 0; // How many times the sum will wrap/carry over
+
+			// Takes the sum of the packet headers 
+			sumNumTotal = sumNum(emptyBits.to_string(), currS_Port.to_string(), &numCarries);
+			sumNumTotal = sumNum(sumNumTotal, currD_Port.to_string(), &numCarries);
+			sumNumTotal = sumNum(sumNumTotal, currSeq_Num.to_string(), &numCarries);
+			sumNumTotal = sumNum(sumNumTotal, currOffset.to_string(), &numCarries);
+			sumNumTotal = sumNum(sumNumTotal, currFlag.to_string(), &numCarries);
+			sumNumTotal = sumNum(sumNumTotal, currWindow.to_string(), &numCarries);
+
+			std::bitset<16> carriesBin(numCarries);
+
+			sumNumTotal = sumNum(sumNumTotal, carriesBin.to_string(), &numCarries);
+
+			numCarries = 0; 
+
+			// Find the checksum value (the one's compliment of the sumNumTotal)
+			std::string complimentChecksum = onesCompliment(sumNumTotal);
+
+			// Sum the sumNumTotal and complimentChecksum value
+			std::string checksum = sumNum(sumNumTotal, complimentChecksum, &numCarries);
+
+			// Take the one's compliment of the checksum value (should be 0 if no errors, anything else is an error)
+			std::string checksumValue = onesCompliment(checksum);
+			std::bitset<16> checksumBits(checksumValue);
+
+			// If there was an error in the transmission
+			if (checksumBits.to_ulong() != 0) {
+				return false;
+			} else { 
+				return true;
+			}
+	}
+
+
+
+
 //----------------------------------------------Begin Client------------------------------------------------------//
 srv_options srvOp;
 
@@ -706,9 +797,19 @@ string read_() {
 		stop();
 
 	   } else { //Default case. This is a packet so read it into packets
-	   
+			bool isvalid;
 			curr_pack = readPacket(line);
 			//DO STUFF
+			
+			//validate checksum
+			isvalid = validateChecksum(readHeader(curr_pack.header));
+			
+			if(isvalid){
+				
+			} else {
+				
+			}
+			
 			cout << "window end: " << win_end << endl;
 			//frame shift 	do we need an ack on this one?
 			if(curr_frame == win_end){ //current frame is the final in the window
@@ -725,61 +826,6 @@ string read_() {
 				curr_frame++; //move right
 			}
 			
-			
-			// Validate checksum
-			std::string sumNumTotal = "";
-			std::bitset<16> emptyBits; // all 16 bits initialized to 0 for initial sum
-
-			std::bitset<16> currS_Port(curr.s_port);
-			std::bitset<16> currD_Port(curr.d_port);
-			std::bitset<16> currSeq_Num(curr.seq_num);
-			std::bitset<16> currOffset(curr.offset);
-			std::bitset<16> currFlag(curr.flag);
-			std::bitset<16> currWindow(curr.window);
-
-			int numCarries = 0; // How many times the sum will wrap/carry over
-
-			// Takes the sum of the packet headers 
-			sumNumTotal = sumNum(emptyBits.to_string(), currS_Port.to_string());
-			sumNumTotal = sumNum(sumNumTotal, currD_Port.to_string());
-			sumNumTotal = sumNum(sumNumTotal, currSeq_Num.to_string());
-			sumNumTotal = sumNum(sumNumTotal, currOffset.to_string());
-			sumNumTotal = sumNum(sumNumTotal, currFlag.to_string());
-			sumNumTotal = sumNum(sumNumTotal, currWindow.to_string());
-
-			std::bitset<16> carriesBin(numCarries);
-
-			sumNumTotal = sumNum(sumNumTotal, carriesBin.to_string());
-
-			numCarries = 0; 
-
-			// Find the checksum value (the one's compliment of the sumNumTotal)
-			std::string complimentChecksum = onesCompliment(sumNumTotal);
-
-			// Sum the sumNumTotal and complimentChecksum value
-			std::string checksum = sumNum(sumNumTotal, complimentChecksum);
-
-			// Take the one's compliment of the checksum value (should be 0 if no errors, anything else is an error)
-			std::string checksumValue = onesCompliment(checksum);
-			std::bitset<16> checksumBits(checksumValue);
-
-			// If there was an error in the transmission
-			if (checksumBits.to_ulong() != 0) {
-
-			} 
-			else { // No error (was stated by Andrew that this should be in here)
-			/*
-				if(fin != "leave") {
-					packets.push_back(curr); //valid, so push		
-					send_(socket, ackit);
-				} else {
-					cout << endl << "Finished up. On to the next thing." << endl;
-					loop = false;
-					send_(socket, ackit);
-				}
-			*/
-			}
-
 			
 		//Send ack 
 		  if (!line.empty() && sendAck == true) { //we should send an ack as main program! so let's iterate the ack num too after we do so
@@ -816,49 +862,6 @@ string read_() {
     /*boost::asio::async_write(socket_, boost::asio::buffer(message_, message_.size()),
         boost::bind(&client::handle_write, this, boost::placeholders::_1));*/
   }
-
-  // String a will be the current sum of the bits
-	// String b is what will be added to the sum
-	std::string sumNum(std::string a, std::string b) {
-		std::string sum = ""; // This will be the sum result
-		int carry = 0;
-		int size = 16;
-
-		for (int i = size-1; i >= 0; i--) {
-			int bitA = a.at(i) - '0';
-			int bitB = b.at(i) - '0';
-			int bit = (bitA ^ bitB ^ carry) + '0';
-
-			sum = (char)bit + sum;
-			carry = (bitA & bitB) | (bitB & carry) | (bitA & carry);
-		}
-
-
-		// This wraps the bits that have overflowed (if there are multiple 
-		//carries, all happen at once)
-		if (carry) { // 1001 + 1000 = 10001 -> '1' + '0001'
-			numCarries += 1;
-		}
-
-		return sum;
-	}
-
-	// Take the one's compliment of the given string of bits (1001 -> 0110)
-	std::string onesCompliment(std::string str) {
-		std::string complimentStr = "";
-
-		for (int i = 0; i < str.length(); i++) {
-			if (str[i] == '0') {
-				complimentStr += "1";
-			} else if (str[i] == '1') {
-				complimentStr += "0";
-			}
-		}
-
-		return complimentStr;
-	}
-
-
 
   void start_write()
   {
