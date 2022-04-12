@@ -966,6 +966,7 @@ string read_() {
       stop();
     }
 	}
+	lastPcktSeqNum = seq_last; // set the output variable value to the last sequence number
   } //end handle read
 
     void send_(string message_) {
