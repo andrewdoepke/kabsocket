@@ -522,6 +522,8 @@ int writeFile(PacketStream *packets, string fPath){
 			std::bitset<16> currOffset(curr.offset);
 			std::bitset<16> currFlag(curr.flag);
 			std::bitset<16> currWindow(curr.window);
+			std::bitset<16> currChecksum(curr.checksum);
+
 
 			int numCarries = 0; // How many times the sum will wrap/carry over
 
@@ -543,7 +545,7 @@ int writeFile(PacketStream *packets, string fPath){
 			std::string complimentChecksum = onesCompliment(sumNumTotal);
 
 			// Sum the sumNumTotal and complimentChecksum value
-			std::string checksum = sumNum(sumNumTotal, complimentChecksum, &numCarries);
+			std::string checksum = sumNum(currChecksum, complimentChecksum, &numCarries);
 
 			// Take the one's compliment of the checksum value (should be 0 if no errors, anything else is an error)
 			std::string checksumValue = onesCompliment(checksum);
