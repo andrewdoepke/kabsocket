@@ -987,8 +987,9 @@ string read_() {
   }
   
   //This will wait for an ack to come in
-  void waitForAck(int *ack_number, string *other){
+  string waitForAck(int *ack_number){
 	string validate = "";
+	string other = "";
 	string ackit = getConstStr(ACK);
 	
 	while(validate != ackit){ //wait for an ack
@@ -996,11 +997,12 @@ string read_() {
 		if(validate=="TIMEOUT"){
 			handleTimeout();
 		} else { //something other than an ack or a timeout
-			*other = validate; 
-			return;
+			other = validate; 
+			return other;
 		}
 	}
 	*ack_number++;
+	return other;
   }
   
 
@@ -1066,6 +1068,7 @@ string read_() {
 		for(i = 0; i < limit; i++){ //begin building and sending all packets. Flow of program managed by this
 			b = bodies[i]; //Current body encoded
 			advance = true;
+			other = "";
 			if(first){ //first iteration
 				curr_head = initHeader(options);
 				first = false;
@@ -1104,7 +1107,7 @@ string read_() {
 			
 			if(needAck == true){ //if we need an ack here, wait for it! if it times out here, we can handle it in the function
 				cout << "waiting for ack..." << endl;
-				waitForAck(&currAck, &other); //ack number is iterated here!
+				other = waitForAck(&currAck); //ack number is iterated here!
 				needAck = false;
 			}
 			
@@ -1113,13 +1116,15 @@ string read_() {
 				string she = "";
 				
 				cout << "Resending..." << endl;						
-				
 				while (she != "GO"){
+					send_("HOLUP");
+					she = "";
 					//cout << "waiting for the go ahead to resend" << endl;
 					she = read_();
-					send_("HOLUP");
-					//cout << "got: " << she << endl;
+					cout << "got: " << she << endl;
 				}
+				
+				she = "";
 				
 				cout << "Confirmed. Handle protocol!" << endl;
 				//handle resending
@@ -1176,7 +1181,7 @@ string read_() {
 	   send_(finish);
 
 		cout << "waiting for ACK to end..." << endl;
-		waitForAck(&currAck, &other); //final wait for the ack, since we finished. This will always have to happen
+		other = waitForAck(&currAck); //final wait for the ack, since we finished. This will always have to happen
 		
 	//OUTPUT	
 	//printOutput();

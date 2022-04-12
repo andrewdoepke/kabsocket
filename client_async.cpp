@@ -720,6 +720,8 @@ private:
 	packInd = 0;
 	
 	seqLow = srvOp.seqLower;
+	
+	resended = false;
 	seqHi = srvOp.seqUpper;
 
 	cout << "Reading... " << endl;
@@ -771,7 +773,7 @@ string read_() {
 		//cout << "Deadline of " << srvOp.timeout << "seconds " << endl;
 
 	//call async read until, giving it our read handler
-    boost::asio::async_read_until(socket_,
+		boost::asio::async_read_until(socket_,
         boost::asio::dynamic_buffer(input_buffer_), delim,
         boost::bind(&client::handle_read, this,
           boost::placeholders::_1, boost::placeholders::_2));
@@ -790,6 +792,15 @@ string read_() {
 	int currAck = 1;
 
 */
+
+	void clearSock(std::size_t n){
+		std::string line(input_buffer_.substr(0, n - 1));
+		input_buffer_.erase(0, n);
+		line = "";
+		input_buffer_ = "";
+	}
+
+
 
 
 	//Read handler. We are only receiving packets, so this will parse them and do what we need to do.
@@ -813,6 +824,60 @@ string read_() {
 			timed = false;
 			start_read();
 			return;
+		} else if(resended == true && curr_frame == win_end){
+			//we missed something!!
+					std::string aya = "";
+					std::string linea = "";
+					size_t len;
+					string readit;
+					
+					switch(protocol){
+						case 1: //GBN
+							//resend
+							//clearSock(n);
+							
+							//pop back entire frame
+							cout << "here" << endl;
+							
+							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
+							for(int f = curr_frame; f > win_start; f--){
+								packets.pop_back();
+								//cout << "f = " << f << endl;
+								seq_last = lastSeqNum(seq_last, seqHi, seqLow);
+								//cout << "sequence is " << seq_last << endl;;
+							}
+							
+							seq_curr = lastSeqNum(seq_last, seqHi, seqLow);
+							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
+							
+							cout << "new curr sequence: " << seq_curr << endl;
+							cout << "new last sequence: " << seq_last << endl;
+							
+							//reinit the window and frame
+							curr_frame = win_start;
+							
+							cout << "shift frame back to " << curr_frame << endl;
+							send_("RESEND"); //tell server to resend.					
+							while(aya != "HOLUP"){
+								cout << "waiting....." << endl;
+								aya = read_();
+								//send_("GIVEMEHOLUP");
+								//clear input
+							}
+							aya = "";
+							
+							cout << "got here!" << endl;
+							
+							send_("GO");
+							
+							sendAck = false;
+							resended = false;
+							start_read();
+							return;
+							break;
+						case 2: //SR
+							break;
+				}//end missed
 		} else {
 	  //cout << "Got somehting" << endl;
 	  string ackit = getConstStr(ACK);
@@ -836,7 +901,10 @@ string read_() {
 		return;
 	}
 	//cout << "line decoded: " << line << endl;
-
+	if(line == "HOLUP"){
+		start_read();
+		return;
+	}
 
 	  //line is now the string we were sent!
 	  if(line == "EXIT"){
@@ -858,15 +926,9 @@ string read_() {
 
 	   } else { //Default case. This is a packet so read it into packets
 			bool isvalid;
-			bool resended = false;
-			
-			try {
-				curr_pack = readPacket(line);
-			} catch (std::exception e){
-				cout << "uh oh" << endl;
-				start_read();
-				return;
-			}
+			cout << "got hereeee. line=" << line << endl;
+			curr_pack = readPacket(line);
+
 			curr_head = readHeader(curr_pack.header);
 			//DO STUFF
 			
@@ -883,7 +945,7 @@ string read_() {
 			//check seq nums
 			seq_curr = (uint32_t)curr_head.seq_num;
 			
-			//cout << "current seq num: " << seq_curr << endl;
+			cout << "current seq num: " << seq_curr << endl;
 
 			if(seq_last == 0){
 				seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
@@ -893,60 +955,8 @@ string read_() {
 				if(seq_last != expectedlast){
 					resended = true;
 				}
-				
-				if(resended){ //we missed something!!
-					std::string aya = "";
-					std::string linea = "";
-					size_t len;
-					string readit;
-					
-					switch(protocol){
-						case 1: //GBN
-							//resend
-							send_("RESEND"); //tell server to resend.
-							resended = true;
-							//pop back entire frame
-							cout << "here" << endl;
-							
-							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
-							for(int f = curr_frame - 1; f > win_start; f--){
-								packets.pop_back();
-								//cout << "f = " << f << endl;
-								seq_last = lastSeqNum(seq_last, seqHi, seqLow);
-								//cout << "sequence is " << seq_last << endl;;
-							}
-							
-							seq_curr = lastSeqNum(seq_last, seqHi, seqLow);
-							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
-							
-							cout << "new curr sequence: " << seq_curr << endl;
-							cout << "new last sequence: " << seq_last << endl;
-							
-							//reinit the window and frame
-							curr_frame = win_start;
-							
-							cout << "shift frame back to " << curr_frame << endl;
-													
-							while(aya != "HOLUP"){
-								cout << "waiting....." << endl;
-								aya = read_();
-								send_("GIVEMEHOLUP");
-								//clear input
-							}
-							
-							cout << "got here!" << endl;
-							
-							send_("GO");
-							
-							sendAck = false;
-							start_read();
-							return;
-							break;
-						case 2: //SR
-							break;
-					}
-				}//end missed
 			}
+				
 			
 			//cout << "window end: " << win_end << endl;
 			//frame shift 	do we need an ack on this one?
@@ -983,9 +993,7 @@ string read_() {
 			packInd++;
 			//send_(ackit);
 			start_read();
-	   }
-	
-
+		}
     } else {
 	if( ec != boost::asio::error::eof)
       std::cout << "Error on receive: " << ec.message() << "\n";
@@ -1101,6 +1109,7 @@ private:
 	int packInd;
 
 	int currAck;
+	bool resended;
 
 	// Declare the output variables
 	uint32_t lastPcktSeqNum;
