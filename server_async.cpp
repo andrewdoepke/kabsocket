@@ -976,7 +976,7 @@ string read_() {
   }
   
   //This will wait for an ack to come in
-  void waitForAck(int *ack_number){
+  void waitForAck(int *ack_number, string *other){
 	string validate = "";
 	string ackit = getConstStr(ACK);
 	
@@ -984,6 +984,9 @@ string read_() {
 		validate = read_();
 		if(validate=="TIMEOUT"){
 			handleTimeout();
+		} else { //something other than an ack or a timeout
+			*other = validate; 
+			return;
 		}
 	}
 	*ack_number++;
@@ -1007,6 +1010,8 @@ string read_() {
 		string tempPack;
 		tcp_header curr_head;
 		tcp_packet curr_packet;
+		
+		string other = "a";
 
 		//cout << "Ready to send" << endl;
 
@@ -1069,9 +1074,21 @@ string read_() {
 			
 			if(needAck == true){ //if we need an ack here, wait for it! if it times out here, we can handle it in the function
 				cout << "waiting for ack..." << endl;
-				waitForAck(&currAck); //ack number is iterated here!
+				waitForAck(&currAck, &other); //ack number is iterated here!
 				needAck = false;
 			}
+			
+			if(other == "RESEND"){
+				other = "a"; //random string
+				
+				//handle resending
+				switch(protocol){
+					case 1: //GBN
+						break;
+					case 2: //SR
+						break;
+				}//end switch
+			}//end if
 
 		} //end for loop
 
@@ -1079,7 +1096,7 @@ string read_() {
 	   send_(finish);
 
 		cout << "waiting for ACK to end..." << endl;
-		waitForAck(&currAck); //final wait for the ack, since we finished. This will always have to happen
+		waitForAck(&currAck. &other); //final wait for the ack, since we finished. This will always have to happen
 		
 	//OUTPUT	
 	printOutput();

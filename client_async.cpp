@@ -547,7 +547,7 @@ int writeFile(PacketStream *packets, string fPath){
 			// Find the checksum value (the one's compliment of the sumNumTotal)
 			std::string complimentChecksum = onesCompliment(sumNumTotal);
 			
-			
+			/*
 			// Sum the sumNumTotal and complimentChecksum value
 			std::string checksum = sumNum(sumNumTotal, complimentChecksum, &numCarries);
 
@@ -567,13 +567,14 @@ int writeFile(PacketStream *packets, string fPath){
 			} else { 
 				return true;
 			}
+			*/
 			
-			/*
+			
 			//cout << "Checksum Value  = " << complimentChecksum << endl;
 			//cout << "original value = " << currChecksum << endl;
 			
 			return complimentChecksum == currChecksum.to_string();
-			*/
+			
 	}
 
 
@@ -765,6 +766,7 @@ string read_() {
   void handle_read(const bs::error_code& ec, std::size_t n)
   {
 	  tcp_packet curr_pack;
+	  tcp_header curr_head;
 
 		if(timed == true){
 			cout << "We timed out! handle it here..." << endl;
@@ -818,6 +820,7 @@ string read_() {
 	   } else { //Default case. This is a packet so read it into packets
 			bool isvalid;
 			curr_pack = readPacket(line);
+			curr_head = readHeader(curr_pack.header)
 			//DO STUFF
 			
 			//validate checksum
@@ -843,6 +846,17 @@ string read_() {
 			} else {
 				cout << "shift from " << curr_frame << " to " << (curr_frame + 1) << endl;
 				curr_frame++; //move right
+			}
+			
+			//Handle stuff
+			
+			//check seq nums
+			seq_curr = curr_head.seq_num;
+			
+			if(seq_last == 0){
+				seq_last = seq_curr;
+			} else {
+				
 			}
 			
 			
@@ -959,6 +973,9 @@ private:
   steady_timer deadline_;
   steady_timer heartbeat_timer_;
   PacketStream packets;
+  
+  int seq_last = 0;
+  int seq_curr = 0;
   
 	//init window 
 	int winSize;
