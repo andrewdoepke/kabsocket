@@ -290,10 +290,10 @@ int genSeqNum(int lower, int upper){
 }
 
 //Gets a sequence number given the last number in sequence and the range to wrap on.
-int getSeqNum(int last, int upper, int lower) {
+int getSeqNum(int last, int upper, int lower) {	
 	if(last == upper){
 		return lower; //wrap
-	} else if(last >= lower && last < upper){
+	} else {
 		return last + 1; //normal case
 	}
 
@@ -744,7 +744,7 @@ StrVec convert_PacketStream_StrVec(PacketStream packets){
 
 tcp_header initHeader(srv_options *srvOp){
 	tcp_header base_header;
-	base_header.seq_num = genSeqNum(srvOp->seqLower, srvOp->seqUpper); //generate first seq number
+	base_header.seq_num = (uint32_t)genSeqNum(srvOp->seqLower, srvOp->seqUpper); //generate first seq number
 	base_header.ack_num = 1; //initialize ack num
 	base_header.offset = 0; //initialize offset
 	base_header.flag = IGN; //default flag to ignore
@@ -895,6 +895,9 @@ public:
 
 	string val = "";
 	
+	seqLow = srvOp.seqLower;
+	seqHi = srvOp.seqUpper;
+	
 	//wait for ack, but this is generic so not using waitforack function
 	while(val != "ACK"){
 		val = read_();
@@ -952,19 +955,7 @@ string read_() {
           boost::asio::placeholders::error,
           boost::asio::placeholders::bytes_transferred));
   }
-  
-  /* Header stuff for reference
-  struct tcp_header {
-	uint16_t s_port = PORT; //sauce port. This is a default value rn but if we do multithreading, we'd have to select from a specified list of open ports.
-	uint16_t d_port = PORT; //destination port. Standard in a packet but it's also good to use the same ports on both sides.
-	uint32_t seq_num; //sequence number. This will be generated during runtime.
-	uint32_t ack_num; //acknowledgement number.
-	unsigned int offset; //Data Offset (entire size of header in bits % 32 bits)
-	uint8_t flag; //Packet flag. Use like: h.flag = ACK; or like if(h.flag == ACK) {...}
-	uint16_t window; // Window size
-	uint16_t checksum; //Checksum value
-  
-  */
+
   
   void handleTimeout(){
 	cout << "Timed out! sad." << endl;
@@ -997,6 +988,25 @@ string read_() {
     void filesend_(srv_options *options) {
 		string ackit = getConstStr(ACK);
 		string finish = getConstStr(FIN);
+		IntVec dropPacket = srvOp.dropPacket;
+		std::string c = "Packet numbers to be lost: ";
+			for(int n : dropPacket){
+				c = c + "" + std::to_string(n) + " ";
+			}
+		cout << c << endl;
+		int currLoss;
+		int currLossInd;
+		
+		int dropSize = dropPacket.size();
+		if(dropSize > 0){
+			currLossInd = 0;
+		
+			currLoss = dropPacket[currLossInd] - 1;
+		} else {
+			currLossInd = -1;
+			currLoss = -1;
+		}
+
 
 		string validate = "";
 		string exit = "EXIT";
@@ -1024,6 +1034,8 @@ string read_() {
 		int win_start = 0;
 		int win_end = winSize - 1; //-1 for zero-indexed shite
 		
+		bool advance;
+		
 		int currAck = 1; //current ack
 		
 		int curr_frame = 0; //current frame number within window
@@ -1031,11 +1043,15 @@ string read_() {
 		
 		for(i = 0; i < limit; i++){ //begin building and sending all packets. Flow of program managed by this
 			b = bodies[i]; //Current body unencoded
-			
+			advance = true;
 			if(i == 0){ //first iteration
 				curr_head = initHeader(options);
 			} else { //advance our header
-				
+			int currr = curr_head.seq_num;
+			//cout << "current sequence before: " << curr_head.seq_num << endl;
+				int hello = getSeqNum(currr, seqHi, seqLow);
+				curr_head.seq_num = (uint32_t)hello;
+			//	cout << "current sequence after: " << curr_head.seq_num << endl;
 				
 				
 				//advanceHeader(&curr_head, options, IGN); //advance the header. idk
@@ -1043,34 +1059,24 @@ string read_() {
 			
 			//Load checksum into header
 			
-			//frame shift 	do we need an ack on this one?
-			if(curr_frame == win_end){ //current frame is the final in the window
-				needAck = true; //we need this, commented out for the time being for testing
-				
-				//shift to next state
-				cout << "shifting beginning of window to " << (win_start + winSize) << endl; 
-				win_start += winSize; //move to next frame outside of the window
-				win_end += winSize;
-				curr_frame = win_start;
-				
-			} else {
-				cout << "shift from " << curr_frame << " to " << (curr_frame + 1) << endl;
-				curr_frame++;//move right
-			}
-			
-			if(curr_frame >= limit){ //we're past the end!
-				cout << "current frame " << curr_frame << " and the final index was " << (limit-1) << endl;
-			}
 			
 			curr_head.checksum = generateChecksum(curr_head, srvOp.packetSize);
+			
 
 			curr_packet.body = base64_encode(b); //encode the body..
 			curr_packet.header = curr_head.toJson(); //Set the current packet header
 
 			tempPack = curr_packet.toJson();
 
-
-			send_(tempPack);
+			if(i != currLoss){
+				send_(tempPack);
+			} else { //lose the packet
+				if(currLossInd++ != dropSize) {
+					currLoss = dropPacket[currLossInd] - 1;
+				} else {
+					currLoss = -1;
+				} 
+			}
 			
 			if(needAck == true){ //if we need an ack here, wait for it! if it times out here, we can handle it in the function
 				cout << "waiting for ack..." << endl;
@@ -1080,15 +1086,60 @@ string read_() {
 			
 			if(other == "RESEND"){
 				other = "a"; //random string
+				string she = "";
 				
+				//doesn't seem to work. we need to clear the buffer client side i think
+				
+										
+				send_("HOLUP");
+				
+				while (she != "GO"){
+					cout << "waiting for the go ahead to resend" << endl;
+					she = read_();
+				}
 				//handle resending
 				switch(protocol){
 					case 1: //GBN
+					
+						//reinit the window and frame
+						win_start -= winSize;
+						win_end -= winSize;
+						curr_frame = win_start;
+						
+						cout << "Lost a packet! Resending frame starting at " << win_start << "..." << endl;
+						//pop back entire frame
+						for(int j = 0; j < curr_frame; j++){
+							i--;
+						}
+						
+
+						advance = false;
 						break;
 					case 2: //SR
 						break;
 				}//end switch
 			}//end if
+			
+			if(advance){
+				//frame shift 	do we need an ack on this one?
+				if(curr_frame == win_end){ //current frame is the final in the window
+					needAck = true; //we need this, commented out for the time being for testing
+					
+					//shift to next state
+					cout << "shifting beginning of window to " << (win_start + winSize) << endl; 
+					win_start += winSize; //move to next frame outside of the window
+					win_end += winSize;
+					curr_frame = win_start;
+					
+				} else {
+					cout << "shift from " << curr_frame << " to " << (curr_frame + 1) << endl;
+					curr_frame++;//move right
+				}
+				
+				if(curr_frame >= limit){ //we're past the end!
+					cout << "current frame " << curr_frame << " and the final index was " << (limit-1) << endl;
+				}
+			}
 
 		} //end for loop
 
@@ -1141,6 +1192,9 @@ private:
 	double elapsedTime;
 	double throughputTotal;
 	double effThroughput;
+	
+	int seqLow;
+	int seqHi;
 };
 
 class tcp_server

@@ -293,7 +293,7 @@ int genSeqNum(int lower, int upper){
 int getSeqNum(int last, int upper, int lower) {
 	if(last == upper){
 		return lower; //wrap
-	} else if(last >= lower && last < upper){
+	} else{
 		return last + 1; //normal case
 	}
 
@@ -429,7 +429,7 @@ srv_options srvOpData(srv_options srv, std::string json){
 
 	IntVec loseA;
 
-	pt::ptree &array2 = reader.get_child("dropPacket");
+	pt::ptree &array2 = reader.get_child("loseAck");
 	j = 0;
 	for(pt::ptree::iterator element = array2.begin(); element != array2.end(); element++){
 		loseA.push_back(element->second.get<int>(std::to_string(j)));
@@ -697,6 +697,7 @@ private:
 
 	//Load configuration. calling read_() starts the read listener
 	string configJson = read_();
+	send_("ACK");
 
 	srvOp = readSrvOp(configJson);
 	cout << endl << "Configuration Loaded! Current Config: " << endl << endl << srvOp.toString() << endl;
@@ -711,6 +712,12 @@ private:
 
 	currAck = 1;
 	protocol = srvOp.proType;
+	
+	seq_curr = 0;
+	seq_last = 0;
+	
+	seqLow = srvOp.seqLower;
+	seqHi = srvOp.seqUpper;
 
 	cout << "Reading... " << endl;
 	  //read_ returns the json of a packet
@@ -735,12 +742,16 @@ string read_() {
 
 	   data.pop_back();
 	   //data.pop_back();
-
+		cout << "data before decode: " << data << endl;
 	   //decode data
-	   data = base64_decode(data);
+	   try{
+		data = base64_decode(data);
+	   } catch (std::exception e) {
+		   cout << "dang " << endl;
+		   return "bad";
+	   }
 
 	   //cout << "Read: " << data << endl;
-	   send_("ACK");
 	}
 
 
@@ -847,7 +858,52 @@ string read_() {
 				cout << "not valid checksum! " << endl;
 			}
 			
-			cout << "window end: " << win_end << endl;
+			
+			//check seq nums
+			seq_curr = (uint32_t)curr_head.seq_num;
+			
+			//cout << "current seq num: " << seq_curr << endl;
+
+			if(seq_last == 0){
+				seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
+			} else {
+				int expectedlast = lastSeqNum(seq_curr, seqHi, seqLow);
+				//cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
+				if(seq_last != expectedlast){ //we missed something!!
+					std::string aya = "";
+					switch(protocol){
+						case 1: //GBN
+							send_("RESEND"); //tell server to resend.
+							
+							//pop back entire frame
+							cout << "here" << endl;
+							for(int j = 0; j < curr_frame; j++){
+								if(j < packets.size()){
+									packets.pop_back();
+								}
+							}
+							
+							//reinit the window and frame
+							curr_frame = win_start;
+							
+							while(aya != "HOLUP"){
+								cout << "waiting....." << endl;
+								aya = read_();
+							}
+							
+							send_("GO");
+							
+							//carry on
+							start_read();
+							return;
+							break;
+						case 2: //SR
+							break;
+					}
+				}//end missed
+			}
+			
+			//cout << "window end: " << win_end << endl;
 			//frame shift 	do we need an ack on this one?
 			if(curr_frame == win_end){ //current frame is the final in the window
 				sendAck = true; //we need this, commented out for the time being for testing
@@ -863,22 +919,9 @@ string read_() {
 				curr_frame++; //move right
 			}
 			
+			
 			//Handle stuff
 			
-			//check seq nums
-			seq_curr = curr_head.seq_num;
-			if(seq_last == 0){
-				seq_last = seq_curr;
-			} else {
-				if(seq_last != lastSeqNum(seq_curr, srvOp.seqLower, srvOp.seqUpper)){ //we missed something!!
-					switch(protocol){
-						case 1: //GBN
-							break;
-						case 2: //SR
-							break;
-					}
-				}//end missed
-			}
 			
 			
 		//Send ack 
@@ -889,6 +932,7 @@ string read_() {
 				sendAck = false;
 		  }	
 			seq_last = seq_curr; //set last
+			//cout << "last after: " << seq_last;
 			packets.push_back(curr_pack);
 			//send_(ackit);
 			start_read();
@@ -995,8 +1039,11 @@ private:
   steady_timer heartbeat_timer_;
   PacketStream packets;
   
-  int seq_last = 0;
-  int seq_curr = 0;
+  int seqLow;
+  int seqHi;
+  
+  int seq_last;
+  int seq_curr;
   
 	//init window 
 	int winSize;
