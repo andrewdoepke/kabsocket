@@ -562,7 +562,6 @@ int writeFile(PacketStream *packets, string fPath){
 			// Find the checksum value (the one's compliment of the sumNumTotal)
 			std::string complimentChecksum = onesCompliment(sumNumTotal);
 			
-			/*
 			// Sum the sumNumTotal and complimentChecksum value
 			std::string checksum = sumNum(sumNumTotal, complimentChecksum, &numCarries);
 
@@ -570,29 +569,23 @@ int writeFile(PacketStream *packets, string fPath){
 			std::string checksumValue = onesCompliment(checksum);
 			std::bitset<16> checksumBits(checksumValue);
 			
-			
+			/*
 			//cout << "" << << endl;
 			cout << "Checksum Value  = " << complimentChecksum << endl;
 			cout << "summed = " << checksum << endl; //should = 1111111111111111
 			cout << "after onesCompliment " <<  checksumValue << endl; //should = 0000000000000000
-			
+			*/
+
 			// If there was an error in the transmission
 			if (checksumBits.to_ulong() != 0) {
 				return false;
 			} else { 
 				return true;
 			}
-			*/
-			
-			
-			//cout << "Checksum Value  = " << complimentChecksum << endl;
-			//cout << "original value = " << currChecksum << endl;
 			
 			return complimentChecksum == currChecksum.to_string();
 			
 	}
-
-
 
 
 //----------------------------------------------Begin Client------------------------------------------------------//
@@ -616,6 +609,11 @@ public:
     // Start the connect actor.
     endpoints_ = endpoints;
     start_connect(endpoints_.begin());
+
+    // Initialize the output variables to 0 here
+    lastPcktSeqNum = 0;
+		originialPackets = 0;
+		retransmittedPackets = 0;
 
     // Start the deadline actor. You will note that we're not setting any
     // particular deadline here. Instead, the connect and input actors will
