@@ -13,6 +13,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <filesystem>
 #include <bitset>
+#include <ctime>
 
 using namespace boost::asio;
 namespace bs = boost::system;
@@ -570,7 +571,19 @@ srv_options userInput(srv_options server_options){
 	if(sitErrorInp == 2){ //Randomly Generated Errors
 		cout << "Randomly Generating Errors" << endl;
 		//TODO: randomly generate errors
+		int numRand = rand() % 10 + 1;
 
+		for (int i = 0; i < numRand; i++) {
+			int insertRand = rand() % 50 + 1;
+			dropPacket.push_back(insertRand);
+		}
+
+		numRand = rand() % 10 + 1;
+
+		for (int i = 0; i < numRand; i++) {
+			int insertRand = rand() % 50 + 1;
+			loseAck.push_back(insertRand);
+		}
 
 
 
@@ -1048,6 +1061,7 @@ string read_() {
 		int i;
 		int limit = bodies.size();
 		string b;
+		int startTime = clock();
 		
 		int winSize = srvOp.slidingWinSize;
 		//init window 
@@ -1177,6 +1191,8 @@ string read_() {
 
 		cout << "waiting for ACK to end..." << endl;
 		waitForAck(&currAck, &other); //final wait for the ack, since we finished. This will always have to happen
+
+	elapsedTime = (clock() - startTime)/CLOCKS_PER_SEC; //variable here 
 		
 	//OUTPUT	
 	//printOutput();
