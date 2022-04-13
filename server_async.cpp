@@ -1113,20 +1113,21 @@ string read_() {
 
 			tempPack = curr_packet.toJson();
 			
-			cout << "current packet we need to lose: " << (currLoss + 1) << endl;
+			cout << "current packet index we need to lose: " << currLoss << endl;
+			cout << "Drop Packet Size: " << dropSize << " and current index is " << currLossInd << endl;
 			
 			if(i != currLoss){
 				send_(tempPack);
-				cout << "Packet " << curr_frame << " sent" << endl;
-			} else { //lose the packet
-				if(currLossInd < dropSize && currLossInd >= 0) {
-					currLossInd++;
-					currLoss = dropPacket[currLossInd] - 1;
-				} else {
+			} else if(currLossInd < dropSize && currLossInd >= 0) {
 					currLoss = -1;
 					currLossInd = -1;
-				} 
+				} else  { //lose the packet
+					if(currLossInd < dropSize && currLossInd >= 0) {
+						currLoss = dropPacket[currLossInd] - 1;
+						currLossInd++;
+					}
 			}
+			
 			
 			if(needAck == true){ //if we need an ack here, wait for it! if it times out here, we can handle it in the function
 				cout << "waiting for ack..." << endl;
@@ -1162,7 +1163,7 @@ string read_() {
 						cout << "Lost a packet! Resending frame starting at " << win_start << "..." << endl;
 						cout << "Packet " << curr_frame << " Re-transmitted." << endl;
 						//pop back entire frame
-						i -= winSize - 1;
+						i -= winSize + 1;
 						
 						for(int f = 0; f < winSize; f++){
 							curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
