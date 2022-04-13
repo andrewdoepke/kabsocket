@@ -13,6 +13,8 @@
 #include <bitset>
 #include <cmath>
 
+#define DEBUG
+
 using boost::asio::steady_timer;
 using boost::asio::ip::tcp;
 
@@ -149,7 +151,9 @@ struct tcp_header {
 			window_s = std::to_string(window);
 			checksum_s = std::to_string(checksum);
 		} catch (int e){
-			cout << "bruh. error: " << e << endl;
+			#ifdef DEBUG
+				cout << "bruh. error: " << e << endl;
+			#endif
 		}
 
 		//build string and return
@@ -257,7 +261,9 @@ int unpack(string pck_json, tcp_header *head, string *body){
 		*body = base64_decode(pck.body);
 		return 0;
 	} catch (int e) {
-		cout << "Bruh Moment. Something broke: " << e << endl;
+		#ifdef DEBUG
+			cout << "Bruh Moment. Something broke: " << e << endl;
+		#endif
 		return 1;
 	}
 }
@@ -455,7 +461,9 @@ srv_options readSrvOp(string srv) {
 //Write to a file. Will change this to take a vector of strings
 int writeFile(PacketStream *packets, string fPath){
 	try {
-		cout << "Writing file..." << endl;
+		#ifdef DEBUG
+			cout << "Writing file..." << endl;
+		#endif
 		ofstream outfile;
 		outfile.open(fPath, ios::out | ios::binary);
 
@@ -477,10 +485,14 @@ int writeFile(PacketStream *packets, string fPath){
 
 		outfile.close();
 
-		cout << "Successfully saved the file to: " << fPath << endl;
+		#ifdef DEBUG
+			cout << "Successfully saved the file to: " << fPath << endl;
+		#endif
 		return 0;
 	} catch(int e){
-		cout << "Uh oh! Error code:" << e << endl;
+		#ifdef DEBUG
+			cout << "Uh oh! Error code:" << e << endl;
+		#endif
 		return e;
 	}
 }
@@ -651,7 +663,9 @@ private:
   {
     if (endpoint_iter != endpoints_.end())
     {
+    	#ifdef DEBUG
       std::cout << "Trying " << endpoint_iter->endpoint() << "...\n";
+      #endif
 
       // Set a deadline for the connect operation.
       deadline_.expires_after(boost::asio::chrono::seconds(60));
@@ -679,7 +693,9 @@ private:
     // the timeout handler must have run first.
     if (!socket_.is_open())
     {
-      std::cout << "Connect timed out\n";
+    	#ifdef DEBUG
+      	std::cout << "Connect timed out\n";
+      #endif
 
       // Try the next available endpoint.
       start_connect(++endpoint_iter);
@@ -688,7 +704,9 @@ private:
     // Check if the connect operation failed before the deadline expired.
     else if (ec)
     {
-      std::cout << "Connect error: " << ec.message() << "\n";
+    	#ifdef DEBUG
+      	std::cout << "Connect error: " << ec.message() << "\n";
+      #endif
 
       // We need to close the socket used in the previous connection attempt
       // before starting a new one.
@@ -703,16 +721,18 @@ private:
     {
       std::cout << "Connected to " << endpoint_iter->endpoint() << "\n";
 
-
-	cout << "Getting Server Configuration.." << endl;
-
+  #ifdef DEBUG
+		cout << "Getting Server Configuration.." << endl;
+	#endif
 
 	//Load configuration
 	string configJson = read_();
 	send_("ACK");
 
 	srvOp = readSrvOp(configJson);
-	cout << endl << "Configuration Loaded! Current Config: " << endl << endl << srvOp.toString() << endl;
+	#ifdef DEBUG
+		cout << endl << "Configuration Loaded! Current Config: " << endl << endl << srvOp.toString() << endl;
+	#endif
 	start_read();
 	
 	sendAck = false; //we don't want to send acks just yet. We will when we have to
@@ -734,7 +754,9 @@ private:
 	resended = false;
 	seqHi = srvOp.seqUpper;
 
-	cout << "Reading... " << endl;
+	#ifdef DEBUG
+		cout << "Reading... " << endl;
+	#endif
 	  //read_ returns the json of a packet
 	//PacketStream packs = fileread_();
 
@@ -751,7 +773,9 @@ string read_() {
 
        boost::asio::read_until( socket_, buf, delim, error);
 	if( error && error != boost::asio::error::eof ) {
-		cout << "receive failed: " << error.message() << endl;
+		#ifdef DEBUG
+			cout << "receive failed: " << error.message() << endl;
+		#endif
 	} else {
        data = boost::asio::buffer_cast<const char*>(buf.data());
 
@@ -762,8 +786,10 @@ string read_() {
 	   try{
 		data = base64_decode(data);
 	   } catch (std::exception e) {
-		   cout << "dang " << endl;
-		   cout << data << endl;
+	   	 #ifdef DEBUG
+			   cout << "dang " << endl;
+			   cout << data << endl;
+		   #endif
 		   return "bad";
 	   }
 
@@ -820,7 +846,9 @@ string read_() {
 	  tcp_header curr_head;
 
 		if(timed == true){
-			cout << "We timed out! handle it here..." << endl;
+			#ifdef DEBUG
+				cout << "We timed out! handle it here..." << endl;
+			#endif
 
 			std::string line(input_buffer_.substr(0, n - 1));
 			input_buffer_.erase(0, n);
@@ -852,7 +880,9 @@ string read_() {
 	try {
 		line = base64_decode(line);
 	} catch (std::exception e) {
-		cout << "baddy" << endl;
+		#ifdef DEBUG
+			cout << "baddy" << endl;
+		#endif
 		start_read();
 		return;
 	}
@@ -864,16 +894,20 @@ string read_() {
 
 	  //line is now the string we were sent!
 	  if(line == "EXIT"){
-			cout << "getting outta here" << endl;
+	  	#ifdef DEBUG
+				cout << "getting outta here" << endl;
+			#endif
 		socket_.close();
 		stop();
 	  } else if(line == finish){ //we should finish up
 		send_(ackit); //send an ack since this part kills the program
-		cout << endl << "Finished up. On to the next thing." << endl;
+		#ifdef DEBUG
+			cout << endl << "Finished up. On to the next thing." << endl;
+		#endif
 		writeFile(&packets, "client_out");
 		
 		//OUTPUT
-		//printOutput();
+		printOutput();
 		
 		//close client
 		socket_.close();
@@ -881,7 +915,9 @@ string read_() {
 		return;
 
 	   } else if(line == "REDO"){
-		   cout << "Timed out, so we will resend the frame!" << endl;
+	   	 #ifdef DEBUG
+		   		cout << "Timed out, so we will resend the frame!" << endl;
+		   #endif
 		   resended = true;
 		   
 	   } else { //Default case. This is a packet so read it into packets
@@ -897,12 +933,13 @@ string read_() {
 			//validate checksum
 			isvalid = validateChecksum(readHeader(curr_pack.header), srvOp.packetSize);
 			
-			if(isvalid){
-				//cout << "valid " << endl;
-			} else {
-				cout << "not valid checksum! " << endl;
-			}
-			
+			#ifdef DEBUG
+				if(isvalid){
+					//cout << "valid " << endl;
+				} else {
+					//cout << "not valid checksum! " << endl;
+				}
+			#endif
 			
 			//check seq nums
 			seq_curr = (uint32_t)curr_head.seq_num;
@@ -916,8 +953,10 @@ string read_() {
 				//cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
 				if(seq_last != expectedlast && resended == false){
 					resended = true;
-					cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
-					cout << "current is " << seq_curr << endl;
+					#ifdef DEBUG
+						cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
+						cout << "current is " << seq_curr << endl;
+					#endif
 				}
 			}
 			
@@ -935,44 +974,55 @@ string read_() {
 							//clearSock(n);
 							
 							//pop back entire frame
-							cout << "here" << endl;
-							
+							#ifdef DEBUG
+								cout << "here" << endl;
+							#endif
 							//seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
 							for(int f = curr_frame; f > win_start; f--){
 								packets.pop_back();
-								cout << "packet size is " << packets.size() << endl;
+								#ifdef DEBUG
+									cout << "packet size is " << packets.size() << endl;
+								#endif
 								//cout << "f = " << f << endl;
 								seq_last = lastSeqNum(seq_last, seqHi, seqLow);
-								cout << "sequence is " << seq_last << endl;;
+								#ifdef DEBUG
+									cout << "sequence is " << seq_last << endl;
+								#endif
 							}
 							
 							seq_curr = seq_last;
 							seq_last = lastSeqNum(seq_last, seqHi, seqLow);
 							
-							cout << "new curr sequence: " << seq_curr << endl;
-							cout << "new last sequence: " << seq_last << endl;
+							#ifdef DEBUG
+								cout << "new curr sequence: " << seq_curr << endl;
+								cout << "new last sequence: " << seq_last << endl;
 							
-							cout << "window start before back shift " << win_start << " and end is " << win_end << " and current frame is " << curr_frame << endl;
-							
+								cout << "window start before back shift " << win_start << " and end is " << win_end << " and current frame is " << curr_frame << endl;
+							#endif
 							
 							//reinit the window and frame
 							//win_start -= winSize;
 							//win_end -= winSize;
 							curr_frame = win_start;
 						
-							
-							cout << "shift frame back to " << curr_frame << endl;
+							#ifdef DEBUG
+								cout << "shift frame back to " << curr_frame << endl;
+							#endif
 							send_("RESEND"); //tell server to resend.					
 							while(aya != "HOLUP"){
-								cout << "waiting....." << endl;
+								#ifdef DEBUG
+									cout << "waiting....." << endl;
+								#endif
 								aya = read_();
 								//send_("GIVEMEHOLUP");
 								//clear input
 							}
 							aya = "";
 							
-							cout << "got here!" << endl;
-							
+							#ifdef DEBUG
+								cout << "got here!" << endl;
+							#endif
+
 							send_("GO");
 							
 							sendAck = false;
@@ -992,13 +1042,18 @@ string read_() {
 				sendAck = true; //we need this, commented out for the time being for testing
 				
 				//shift to next state
-				cout << "shifting beginning of window to " << (win_start + winSize) << endl;
+				#ifdef DEBUG
+					cout << "shifting beginning of window to " << (win_start + winSize) << endl;
+				#endif
+
 				win_start += winSize; //move to next frame outside of the window
 				win_end += winSize;
 				curr_frame = win_start;
 				
 			} else {
-				cout << "shift from " << curr_frame << " to " << (curr_frame + 1) << endl;
+				#ifdef DEBUG
+					cout << "shift from " << curr_frame << " to " << (curr_frame + 1) << endl;
+				#endif
 				curr_frame++; //move right
 			}
 			
@@ -1035,7 +1090,9 @@ string read_() {
 		}
     } else {
 	if( ec != boost::asio::error::eof)
-      std::cout << "Error on receive: " << ec.message() << "\n";
+			#ifdef DEBUG
+      	std::cout << "Error on receive: " << ec.message() << "\n";
+    	#endif
 
       stop();
     }
@@ -1079,7 +1136,9 @@ string read_() {
     }
     else
     {
-      std::cout << "Error on write: " << ec.message() << "\n";
+    	#ifdef DEBUG
+      	std::cout << "Error on write: " << ec.message() << "\n";
+      #endif
 
       stop();
     }
@@ -1095,7 +1154,9 @@ string read_() {
     // deadline before this actor had a chance to run.
     if (deadline_.expiry() <= steady_timer::clock_type::now())
     {
-		cout << "Timed out" << endl;
+    	#ifdef DEBUG
+				cout << "Timed out" << endl;
+			#endif
 
       // The deadline has passed. The socket is closed so that any outstanding
       // asynchronous operations are cancelled.
@@ -1182,7 +1243,9 @@ int main(int argc, char* argv[])
   }
   catch (std::exception& e)
   {
-    std::cerr << "Exception: " << e.what() << "\n";
+  	#ifdef DEBUG
+    	std::cerr << "Exception: " << e.what() << "\n";
+    #endif
   }
 
   return 0;
