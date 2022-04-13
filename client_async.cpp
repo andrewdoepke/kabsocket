@@ -579,8 +579,20 @@ int writeFile(PacketStream *packets, string fPath){
 
 			// If there was an error in the transmission
 			if (checksumBits.to_ulong() != 0) {
+				cout << "Checksum failed!" << endl;
+				cout << "Current Window: [";
+				for (int w = win_start; w < win_end; w++) {
+					if (w = win_end - 1) {
+						cout << w;
+					}
+					else {
+						cout << w << ", ";
+					}
+			}
+			cout << "]";
 				return false;
 			} else { 
+				cout << "Checksum OK!" << endl;
 				return true;
 			}
 			
@@ -873,6 +885,8 @@ string read_() {
 			//cout << "got hereeee. line=" << line << endl;
 			curr_pack = readPacket(line);
 
+			cout << "Packet " << curr_frame << " received" << endl;
+
 			curr_head = readHeader(curr_pack.header);
 			//DO STUFF
 			
@@ -968,13 +982,13 @@ string read_() {
 			}
 				
 			
-			//cout << "window end: " << win_end << endl;
+			//cout << "window end: " << win_end << endl;f
 			//frame shift 	do we need an ack on this one?
 			if(curr_frame == win_end){ //current frame is the final in the window
 				sendAck = true; //we need this, commented out for the time being for testing
 				
 				//shift to next state
-				cout << "shifting beginning of window to " << (win_start + winSize) << endl; 
+				cout << "shifting beginning of window to " << (win_start + winSize) << endl;
 				win_start += winSize; //move to next frame outside of the window
 				win_end += winSize;
 				curr_frame = win_start;
@@ -991,10 +1005,21 @@ string read_() {
 			
 		//Send ack 
 		  if (!line.empty() && sendAck == true) { //we should send an ack as main program! so let's iterate the ack num too after we do so
-			//std::cout << "Received: " << line << "\n";
 				send_(ackit);
+				cout << "Ack " << currAck << " sent" << endl;
 				currAck++;
 				sendAck = false;
+
+				cout << "Current Window = [";
+				for (int w = win_start; w < win_end; w++) {
+					if (w = win_end - 1) {
+						cout << w;
+					}
+					else {
+						cout << w << ", ";
+					}
+				}
+				cout << "]";
 		  }	
 			seq_last = seq_curr; //set last
 			//cout << "last after: " << seq_last;
