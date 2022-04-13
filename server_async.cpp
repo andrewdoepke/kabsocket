@@ -571,18 +571,21 @@ srv_options userInput(srv_options server_options){
 	if(sitErrorInp == 2){ //Randomly Generated Errors
 		cout << "Randomly Generating Errors" << endl;
 		//TODO: randomly generate errors
-		int numRand = rand() % 10 + 1;
 
-		for (int i = 0; i < numRand; i++) {
-			int insertRand = rand() % 50 + 1;
-			dropPacket.push_back(insertRand);
+		for (int i = 0; i < bodies.size(); i++) {
+			int randomChance = rand() % 5;
+			if (randomChance = 2) {
+				dropPacket.push_back(i);
+			}
 		}
 
-		numRand = rand() % 10 + 1;
 
-		for (int i = 0; i < numRand; i++) {
-			int insertRand = rand() % 50 + 1;
-			loseAck.push_back(insertRand);
+
+		for (int i = 0; i < bodies.size(); i++) {
+			int randomChance = rand() % 5;
+			if (randomChance = 2) {
+				loseAck.push_back(i);
+			}
 		}
 
 
