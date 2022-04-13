@@ -993,6 +993,9 @@ string read_() {
   void handleTimeout(){
 	cout << "Timed out! sad." << endl;
 
+	// Output for timing out
+	// cout << "Packet " << _____ << " *****Timed Out *****" << endl;
+
 	//HANDLE SERVER SIDE TIMEOUT
 	send_("EXIT"); //This will kill the client with exit command
 	return;
@@ -1014,6 +1017,7 @@ string read_() {
 			return other;
 		}
 	}
+	cout << "Ack " << ack_number << " received" << endl;
 	*ack_number++;
 	return other;
   }
@@ -1113,6 +1117,7 @@ string read_() {
 			
 			if(i != currLoss){
 				send_(tempPack);
+				cout << "Packet " << curr_frame << " sent" << endl;
 			} else { //lose the packet
 				if(currLossInd < dropSize && currLossInd >= 0) {
 					currLossInd++;
@@ -1155,6 +1160,7 @@ string read_() {
 						curr_frame = win_start;
 						
 						cout << "Lost a packet! Resending frame starting at " << win_start << "..." << endl;
+						cout << "Packet " << curr_frame << " Re-transmitted." << endl;
 						//pop back entire frame
 						i -= winSize - 1;
 						
