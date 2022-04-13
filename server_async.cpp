@@ -1312,9 +1312,9 @@ public:
 private:
   void start_accept() {
 
-#ifdef debug
+
 	cout << "Waiting for a connection..." << endl;
-#endif
+
 
     tcp_connection::pointer new_connection =
       tcp_connection::create(io_context_);
