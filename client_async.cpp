@@ -13,7 +13,7 @@
 #include <bitset>
 #include <cmath>
 
-#define DEBUG
+//#define DEBUG
 
 using boost::asio::steady_timer;
 using boost::asio::ip::tcp;

@@ -14,7 +14,7 @@
 #include <filesystem>
 #include <bitset>
 #include <ctime>
-#define debug
+//#define debug
 
 using namespace boost::asio;
 namespace bs = boost::system;
@@ -1251,7 +1251,7 @@ string read_() {
 		other = waitForAck(&currAck); //final wait for the ack, since we finished. This will always have to happen
 		
 	//OUTPUT	
-	//printOutput();
+	printOutput();
 #ifdef debug
 	  cout << "Finished processing this one." << endl << endl;
 #endif
