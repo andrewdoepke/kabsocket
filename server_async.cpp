@@ -1088,10 +1088,10 @@ string read_() {
 				first = false;
 			} else { //advance our header
 			int currr = curr_head.seq_num;
-			//cout << "current sequence before: " << curr_head.seq_num << endl;
+			cout << "current sequence before: " << curr_head.seq_num << endl;
 				int hello = getSeqNum(currr, seqHi, seqLow);
 				curr_head.seq_num = (uint32_t)hello;
-			//	cout << "current sequence after: " << curr_head.seq_num << endl;
+				//cout << "current sequence after: " << curr_head.seq_num << endl;
 				
 				
 				//advanceHeader(&curr_head, options, IGN); //advance the header. idk
@@ -1108,14 +1108,18 @@ string read_() {
 			curr_packet.header = curr_head.toJson(); //Set the current packet header
 
 			tempPack = curr_packet.toJson();
-
+			
+			cout << "current packet we need to lose: " << (currLoss + 1) << endl;
+			
 			if(i != currLoss){
 				send_(tempPack);
 			} else { //lose the packet
-				if(currLossInd++ != dropSize) {
+				if(currLossInd < dropSize && currLossInd >= 0) {
 					currLoss = dropPacket[currLossInd] - 1;
+					currLossInd++;
 				} else {
 					currLoss = -1;
+					currLossInd = -1;
 				} 
 			}
 			
@@ -1160,7 +1164,7 @@ string read_() {
 						
 						cout << "new starting packet: " << i << " with seq num " << curr_head.seq_num << endl;
 						curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
-						
+						other = "";
 						advance = false;
 						break;
 					case 2: //SR

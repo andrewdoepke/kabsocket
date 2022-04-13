@@ -822,60 +822,6 @@ string read_() {
 			timed = false;
 			start_read();
 			return;
-		} else if(resended == true && curr_frame == win_end){
-			//we missed something!!
-					std::string aya = "";
-					std::string linea = "";
-					size_t len;
-					string readit;
-					
-					switch(protocol){
-						case 1: //GBN
-							//resend
-							//clearSock(n);
-							
-							//pop back entire frame
-							cout << "here" << endl;
-							
-							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
-							for(int f = curr_frame; f > win_start; f--){
-								packets.pop_back();
-								//cout << "f = " << f << endl;
-								seq_last = lastSeqNum(seq_last, seqHi, seqLow);
-								//cout << "sequence is " << seq_last << endl;;
-							}
-							
-							seq_curr = lastSeqNum(seq_last, seqHi, seqLow);
-							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
-							
-							cout << "new curr sequence: " << seq_curr << endl;
-							cout << "new last sequence: " << seq_last << endl;
-							
-							//reinit the window and frame
-							curr_frame = win_start;
-							
-							cout << "shift frame back to " << curr_frame << endl;
-							send_("RESEND"); //tell server to resend.					
-							while(aya != "HOLUP"){
-								cout << "waiting....." << endl;
-								aya = read_();
-								//send_("GIVEMEHOLUP");
-								//clear input
-							}
-							aya = "";
-							
-							cout << "got here!" << endl;
-							
-							send_("GO");
-							
-							sendAck = false;
-							resended = false;
-							start_read();
-							return;
-							break;
-						case 2: //SR
-							break;
-				}//end missed
 		} else {
 	  //cout << "Got somehting" << endl;
 	  string ackit = getConstStr(ACK);
@@ -943,16 +889,82 @@ string read_() {
 			//check seq nums
 			seq_curr = (uint32_t)curr_head.seq_num;
 			
-			cout << "current seq num: " << seq_curr << endl;
+			//cout << "current seq num: " << seq_curr << endl;
 
 			if(seq_last == 0){
 				seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
 			} else {
 				int expectedlast = lastSeqNum(seq_curr, seqHi, seqLow);
-				cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
+				//cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
 				if(seq_last != expectedlast){
 					resended = true;
+					cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
+					cout << "current is " << seq_curr << endl;
 				}
+			}
+			
+			
+			if(resended == true && curr_frame >= win_end){
+			//we missed something!!
+					std::string aya = "";
+					std::string linea = "";
+					size_t len;
+					string readit;
+					
+					switch(protocol){
+						case 1: //GBN
+							//resend
+							//clearSock(n);
+							
+							//pop back entire frame
+							cout << "here" << endl;
+							
+							//seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
+							for(int f = curr_frame; f > win_start; f--){
+								packets.pop_back();
+								cout << "packet size is " << packets.size() << endl;
+								//cout << "f = " << f << endl;
+								seq_last = lastSeqNum(seq_last, seqHi, seqLow);
+								cout << "sequence is " << seq_last << endl;;
+							}
+							
+							seq_curr = seq_last;
+							seq_last = lastSeqNum(seq_last, seqHi, seqLow);
+							
+							cout << "new curr sequence: " << seq_curr << endl;
+							cout << "new last sequence: " << seq_last << endl;
+							
+							cout << "window start before back shift " << win_start << " and end is " << win_end << " and current frame is " << curr_frame << endl;
+							
+							
+							//reinit the window and frame
+							//win_start -= winSize;
+							//win_end -= winSize;
+							curr_frame = win_start;
+						
+							
+							cout << "shift frame back to " << curr_frame << endl;
+							send_("RESEND"); //tell server to resend.					
+							while(aya != "HOLUP"){
+								cout << "waiting....." << endl;
+								aya = read_();
+								//send_("GIVEMEHOLUP");
+								//clear input
+							}
+							aya = "";
+							
+							cout << "got here!" << endl;
+							
+							send_("GO");
+							
+							sendAck = false;
+							resended = false;
+							start_read();
+							return;
+							break;
+						case 2: //SR
+							break;
+				}//end missed
 			}
 				
 			
