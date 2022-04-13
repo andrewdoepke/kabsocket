@@ -880,6 +880,10 @@ string read_() {
 		stop();
 		return;
 
+	   } else if(line == "REDO"){
+		   cout << "Timed out, so we will resend the frame!" << endl;
+		   resended = true;
+		   
 	   } else { //Default case. This is a packet so read it into packets
 			bool isvalid;
 			//cout << "got hereeee. line=" << line << endl;
@@ -1129,6 +1133,8 @@ private:
   steady_timer deadline_;
   steady_timer heartbeat_timer_;
   PacketStream packets;
+  
+  IntVec dropAcks;
   
   int seqLow;
   int seqHi;

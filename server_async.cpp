@@ -997,7 +997,7 @@ string read_() {
 	// cout << "Packet " << _____ << " *****Timed Out *****" << endl;
 
 	//HANDLE SERVER SIDE TIMEOUT
-	send_("EXIT"); //This will kill the client with exit command
+	send_("REDO"); //This will kill the client with exit command
 	return;
 	//handle timeout
   }
@@ -1113,19 +1113,17 @@ string read_() {
 
 			tempPack = curr_packet.toJson();
 			
-			cout << "current packet index we need to lose: " << currLoss << endl;
-			cout << "Drop Packet Size: " << dropSize << " and current index is " << currLossInd << endl;
+			//cout << "current packet index we need to lose: " << currLoss << endl;
+			//cout << "Drop Packet Size: " << dropSize << " and current index is " << currLossInd << endl;
 			
 			if(i != currLoss){
 				send_(tempPack);
 			} else if(currLossInd < dropSize && currLossInd >= 0) {
+					currLoss = dropPacket[currLossInd] - 1;
+					currLossInd++;
+				} else  { //lose the packet
 					currLoss = -1;
 					currLossInd = -1;
-				} else  { //lose the packet
-					if(currLossInd < dropSize && currLossInd >= 0) {
-						currLoss = dropPacket[currLossInd] - 1;
-						currLossInd++;
-					}
 			}
 			
 			
