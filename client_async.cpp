@@ -913,6 +913,8 @@ string read_() {
 		#endif
 		writeFile(&packets, "client_out");
 		
+		originialPackets = packets.size();
+		
 		//OUTPUT
 		printOutput();
 		
@@ -936,6 +938,7 @@ string read_() {
 			curr_pack = readPacket(line);
 
 			cout << "Packet " << curr_frame << " received" << endl;
+			retransmittedPackets++;
 
 			curr_head = readHeader(curr_pack.header);
 			//DO STUFF
