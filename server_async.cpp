@@ -1115,8 +1115,8 @@ string read_() {
 				send_(tempPack);
 			} else { //lose the packet
 				if(currLossInd < dropSize && currLossInd >= 0) {
-					currLoss = dropPacket[currLossInd] - 1;
 					currLossInd++;
+					currLoss = dropPacket[currLossInd] - 1;
 				} else {
 					currLoss = -1;
 					currLossInd = -1;
@@ -1156,7 +1156,7 @@ string read_() {
 						
 						cout << "Lost a packet! Resending frame starting at " << win_start << "..." << endl;
 						//pop back entire frame
-						i -= winSize;
+						i -= winSize - 1;
 						
 						for(int f = 0; f < winSize; f++){
 							curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);

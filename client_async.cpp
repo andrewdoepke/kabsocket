@@ -870,7 +870,7 @@ string read_() {
 
 	   } else { //Default case. This is a packet so read it into packets
 			bool isvalid;
-			cout << "got hereeee. line=" << line << endl;
+			//cout << "got hereeee. line=" << line << endl;
 			curr_pack = readPacket(line);
 
 			curr_head = readHeader(curr_pack.header);
@@ -896,7 +896,7 @@ string read_() {
 			} else {
 				int expectedlast = lastSeqNum(seq_curr, seqHi, seqLow);
 				//cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
-				if(seq_last != expectedlast){
+				if(seq_last != expectedlast && resended == false){
 					resended = true;
 					cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
 					cout << "current is " << seq_curr << endl;
