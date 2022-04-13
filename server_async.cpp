@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <bitset>
 #include <ctime>
+#define debug
 
 using namespace boost::asio;
 namespace bs = boost::system;
@@ -258,7 +259,9 @@ int unpack(string pck_json, tcp_header *head, string *body){
 		*body = pck.body;
 		return 0;
 	} catch (int e) {
+#ifdef debug
 		cout << "Bruh Moment. Something broke: " << e << endl;
+#endif
 		return 1;
 	}
 }
@@ -739,7 +742,9 @@ void stageFile(int packetSize, std::vector<char> *buff, StrVec *out) {
 				bC = buffSize;
 				progCount = 0;
 			 }
+#ifdef debug
 			 cout << "Bytes left to go: " << progCount << endl;
+#endif
 			
 			//tempbod = base64_encode(tempbod);
 			
@@ -917,13 +922,17 @@ public:
 
   void start() {
 
-	  cout << "Connected!" << endl;
+#ifdef debug
 
+	  cout << "Connected!" << endl;
 	//start_read();
 
 	cout << "Sending Server Config" << endl;
+#endif
 	send_(srvOp.toJson()); //sends the json of the srvConf
+#ifdef debug
 	cout << "Sent!" << endl << endl;
+#endif
 
 	string val = "";
 	
@@ -934,15 +943,18 @@ public:
 	while(val != "ACK"){
 		val = read_();
 		if(val=="TIMEOUT"){
+#ifdef debug
 			cout << "Timed out! sad." << endl;
+#endif
 			//handle timeout
 		}
 	}
 	
 	needAck = false; //we don't need acks yet, until we need them
 	//cout << "Back in parent: " << val << endl;
-
+#ifdef debug
 	cout << "Sending the file..." << endl;
+#endif
 	std::vector<char> data;
 	filesend_(&srvOp);
   }
@@ -957,7 +969,9 @@ string read_() {
 
        boost::asio::read_until( socket_, buf, delim, error);
 	if( error && error != boost::asio::error::eof ) {
+#ifdef debug
 		cout << "receive failed: " << error.message() << endl;
+#endif
 	} else {
        data = boost::asio::buffer_cast<const char*>(buf.data());
 
@@ -994,8 +1008,9 @@ string read_() {
 
   
   void handleTimeout(){
+#ifdef debug
 	cout << "Timed out! sad." << endl;
-
+#endif
 	// Output for timing out
 	// cout << "Packet " << _____ << " *****Timed Out *****" << endl;
 
@@ -1035,7 +1050,9 @@ string read_() {
 			for(int n : dropPacket){
 				c = c + "" + std::to_string(n) + " ";
 			}
+#ifdef debug
 		cout << c << endl;
+#endif
 		int currLoss;
 		int currLossInd;
 		
@@ -1095,7 +1112,9 @@ string read_() {
 				first = false;
 			} else { //advance our header
 			int currr = curr_head.seq_num;
+#ifdef debug
 			cout << "current sequence before: " << curr_head.seq_num << endl;
+#endif
 				int hello = getSeqNum(currr, seqHi, seqLow);
 				curr_head.seq_num = (uint32_t)hello;
 				//cout << "current sequence after: " << curr_head.seq_num << endl;
@@ -1131,7 +1150,9 @@ string read_() {
 			
 			
 			if(needAck == true){ //if we need an ack here, wait for it! if it times out here, we can handle it in the function
+#ifdef debug
 				cout << "waiting for ack..." << endl;
+#endif
 				other = waitForAck(&currAck); //ack number is iterated here!
 				needAck = false;
 			}
@@ -1139,19 +1160,23 @@ string read_() {
 			if(other == "RESEND"){
 				other = "a"; //random string
 				string she = "";
-				
-				cout << "Resending..." << endl;						
+#ifdef debug
+				cout << "Resending..." << endl;
+#endif				
 				while (she != "GO"){
 					send_("HOLUP");
 					she = "";
 					//cout << "waiting for the go ahead to resend" << endl;
 					she = read_();
+#ifdef debug
 					cout << "got: " << she << endl;
+#endif
 				}
 				
 				she = "";
-				
+#ifdef debug
 				cout << "Confirmed. Handle protocol!" << endl;
+#endif
 				//handle resending
 				switch(protocol){
 					case 1: //GBN
@@ -1160,8 +1185,9 @@ string read_() {
 						win_start -= winSize;
 						win_end -= winSize;
 						curr_frame = win_start;
-						
+#ifdef debug
 						cout << "Lost a packet! Resending frame starting at " << win_start << "..." << endl;
+#endif
 						cout << "Packet " << curr_frame << " Re-transmitted." << endl;
 						//pop back entire frame
 						i -= winSize + 1;
@@ -1169,8 +1195,9 @@ string read_() {
 						for(int f = 0; f < winSize; f++){
 							curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
 						}
-						
+#ifdef debug
 						cout << "new starting packet: " << i << " with seq num " << curr_head.seq_num << endl;
+#endif
 						curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
 						other = "";
 						advance = false;
@@ -1186,35 +1213,45 @@ string read_() {
 					needAck = true; //we need this, commented out for the time being for testing
 					
 					//shift to next state
+#ifdef debug
 					cout << "shifting beginning of window to " << (win_start + winSize) << endl; 
+#endif
 					win_start += winSize; //move to next frame outside of the window
 					win_end += winSize;
 					curr_frame = win_start;
 					
 				} else {
+#ifdef debug
 					cout << "shift from " << curr_frame << " to " << (curr_frame + 1) << endl;
+#endif
 					curr_frame++;//move right
 				}
 				
 				if(curr_frame >= limit){ //we're past the end!
+#ifdef debug
 					cout << "current frame " << curr_frame << " and the final index was " << (limit-1) << endl;
+#endif
 				}
 			}
 
 		} //end for loop
-
+#ifdef debug
 	   cout << "Sent! Telling client to exit." << endl;
+#endif
 	   send_(finish);
 
+#ifdef debug
 		cout << "waiting for ACK to end..." << endl;
+#endif
 
 	elapsedTime = (clock() - startTime)/CLOCKS_PER_SEC; //variable here 
 		other = waitForAck(&currAck); //final wait for the ack, since we finished. This will always have to happen
 		
 	//OUTPUT	
 	//printOutput();
-	
+#ifdef debug
 	  cout << "Finished processing this one." << endl << endl;
+#endif
   }
 
   void printOutput() {
@@ -1272,7 +1309,9 @@ public:
 private:
   void start_accept() {
 
+#ifdef debug
 	cout << "Waiting for a connection..." << endl;
+#endif
 
     tcp_connection::pointer new_connection =
       tcp_connection::create(io_context_);
