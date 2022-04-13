@@ -442,6 +442,7 @@ srv_options readSrvOp(string srv) {
 	return s;
 }
 
+int errType;
 
 //User input function! Takes a srv_options struct as a parameter, prompts for and loads values, and returns the new struct
 srv_options userInput(srv_options server_options){
@@ -570,30 +571,10 @@ srv_options userInput(srv_options server_options){
 	}
 
 	//Handle Values
-
-	if(sitErrorInp == 2){ //Randomly Generated Errors
-		cout << "Randomly Generating Errors" << endl;
-		//TODO: randomly generate errors
-
-		for (int i = 0; i < bodies.size(); i++) {
-			int randomChance = rand() % 5;
-			if (randomChance = 2) {
-				dropPacket.push_back(i);
-			}
-		}
+	errType = sitErrorInp;
 
 
-
-		for (int i = 0; i < bodies.size(); i++) {
-			int randomChance = rand() % 5;
-			if (randomChance = 2) {
-				loseAck.push_back(i);
-			}
-		}
-
-
-
-	} else if(sitErrorInp == 3){ //User Specified Errors
+	if(sitErrorInp == 3){ //User Specified Errors
 
 		//prompt for packet loss and Infinitely prompt for drop packets until done
 
@@ -714,6 +695,28 @@ std::vector<char> readBinaryFile(string fPath) {
   in.close();
 
 	return pBuff;
+}
+
+void populateRandoms(IntVec *Packs, IntVec *Acks, int bodySize){
+		cout << "Randomly Generating Errors" << endl;
+		//TODO: randomly generate errors
+
+		for (int i = 0; i < bodySize; i++) {
+			int randomChance = rand() % 5;
+			if (randomChance = 2) {
+				Packs->push_back(i);
+			}
+		}
+
+
+
+		for (int i = 0; i < bodySize; i++) {
+			int randomChance = rand() % 5;
+			if (randomChance = 2) {
+				Acks->push_back(i);
+			}
+		}
+
 }
 
 
@@ -1359,6 +1362,10 @@ int main(int argc, char *argv[]) {
 
 	
 	loadFile(&srvOp, filePath);
+	
+	if(errType == 2){
+		populateRandoms(&srvOp.dropPacket, &srvOp.loseAck, bodies.size());
+	}
   try {
     boost::asio::io_context io_context;
     tcp_server server(io_context);
