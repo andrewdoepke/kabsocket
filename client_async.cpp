@@ -592,16 +592,6 @@ int writeFile(PacketStream *packets, string fPath){
 			// If there was an error in the transmission
 			if (checksumBits.to_ulong() != 0) {
 				cout << "Checksum failed!" << endl;
-				cout << "Current Window: [";
-				for (int w = win_start; w < win_end; w++) {
-					if (w = win_end - 1) {
-						cout << w;
-					}
-					else {
-						cout << w << ", ";
-					}
-			}
-			cout << "]";
 				return false;
 			} else { 
 				cout << "Checksum OK!" << endl;
@@ -753,14 +743,27 @@ private:
 	
 	resended = false;
 	seqHi = srvOp.seqUpper;
+	
+	dropAcks = srvOp.loseAck;
+	
+		int dropSize = dropAcks.size();
+		if(dropSize > 0){
+			currLossInd = 0;
+		
+			currLoss = dropAcks[currLossInd] - 1;
+		} else {
+			currLossInd = -1;
+			currLoss = -1;
+		}
+	
+	std::string c = "Ack numbers to be lost: ";
+	for(int n : dropAcks){
+		c = c + "" + std::to_string(n) + " ";
+	}
 
 	#ifdef DEBUG
 		cout << "Reading... " << endl;
 	#endif
-	  //read_ returns the json of a packet
-	//PacketStream packs = fileread_();
-
-	//cout << "Read complete." << endl;
 
     }
   }
@@ -855,10 +858,13 @@ string read_() {
 			line = "";
 			input_buffer_ = "";
 			//cout << "cleared input buffer: " << input_buffer_ << endl;
-
+			
+			
+			resended = true;
 
 			//HANDLE CLI SIDE TIMEOUT
-
+			send_("RESEND");
+			
 			timed = false;
 			start_read();
 			return;
@@ -919,6 +925,9 @@ string read_() {
 		   		cout << "Timed out, so we will resend the frame!" << endl;
 		   #endif
 		   resended = true;
+		   //send_("ACK");
+		   start_read();
+		   return;
 		   
 	   } else { //Default case. This is a packet so read it into packets
 			bool isvalid;
@@ -933,13 +942,24 @@ string read_() {
 			//validate checksum
 			isvalid = validateChecksum(readHeader(curr_pack.header), srvOp.packetSize);
 			
-			#ifdef DEBUG
-				if(isvalid){
-					//cout << "valid " << endl;
-				} else {
-					//cout << "not valid checksum! " << endl;
+			if(isvalid){
+				//cout << "valid " << endl;
+			} else {
+				cout << "Current Window: [";
+				for (int w = win_start; w < win_end; w++) {
+					if (w = win_end - 1) {
+						cout << w;
+					}
+					else {
+						cout << w << ", ";
+					}
 				}
-			#endif
+				cout << "]" << endl;
+				
+				
+				//resend
+				resended = true;
+			}
 			
 			//check seq nums
 			seq_curr = (uint32_t)curr_head.seq_num;
@@ -951,7 +971,7 @@ string read_() {
 			} else {
 				int expectedlast = lastSeqNum(seq_curr, seqHi, seqLow);
 				//cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
-				if(seq_last != expectedlast && resended == false){
+				if(seq_last != expectedlast){
 					resended = true;
 					#ifdef DEBUG
 						cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
@@ -1064,9 +1084,18 @@ string read_() {
 			
 		//Send ack 
 		  if (!line.empty() && sendAck == true) { //we should send an ack as main program! so let's iterate the ack num too after we do so
-				send_(ackit);
-				cout << "Ack " << currAck << " sent" << endl;
-				currAck++;
+		  
+				if(currAck != currLoss){
+					send_(ackit);
+					cout << "Ack " << currAck << " sent" << endl;
+					currAck++;
+				} else if(currLossInd < dropSize && currLossInd >= 0) {
+						currLoss = dropAcks[currLossInd] - 1;
+						currLossInd++;
+					} else  { //lose the packet
+						currLoss = -1;
+						currLossInd = -1;
+				}
 				sendAck = false;
 
 				cout << "Current Window = [";
@@ -1078,7 +1107,7 @@ string read_() {
 						cout << w << ", ";
 					}
 				}
-				cout << "]";
+				cout << "]" << endl;
 		  }	
 			seq_last = seq_curr; //set last
 			//cout << "last after: " << seq_last;
@@ -1196,6 +1225,11 @@ private:
   PacketStream packets;
   
   IntVec dropAcks;
+  
+	int currLoss;
+	int currLossInd;
+	
+	int dropSize;
   
   int seqLow;
   int seqHi;
