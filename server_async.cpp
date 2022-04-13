@@ -942,6 +942,12 @@ public:
 	seqLow = srvOp.seqLower;
 	seqHi = srvOp.seqUpper;
 	
+	int sentPackets = 0;
+	int retransmittedPackets = 0;
+	double elapsedTime = 0;
+	double throughputTotal = 0;
+	double effThroughput = 0;
+	
 	//wait for ack, but this is generic so not using waitforack function
 	while(val != "ACK"){
 		val = read_();
@@ -1090,7 +1096,7 @@ string read_() {
 		int i;
 		int limit = bodies.size();
 		string b;
-		int startTime = clock();
+		startTime = clock();
 		
 		int winSize = srvOp.slidingWinSize;
 		//init window 
@@ -1143,6 +1149,7 @@ string read_() {
 			
 			if(i != currLoss){
 				send_(tempPack);
+				retransmittedPackets++;
 			} else if(currLossInd < dropSize && currLossInd >= 0) {
 					currLoss = dropPacket[currLossInd] - 1;
 					currLossInd++;
@@ -1247,7 +1254,6 @@ string read_() {
 		cout << "waiting for ACK to end..." << endl;
 #endif
 
-	elapsedTime = (clock() - startTime)/CLOCKS_PER_SEC; //variable here 
 		other = waitForAck(&currAck); //final wait for the ack, since we finished. This will always have to happen
 		
 	//OUTPUT	
@@ -1259,7 +1265,14 @@ string read_() {
 
   void printOutput() {
   	cout << "Session successfully terminated" << endl << endl;
-
+	
+	sentPackets = bodies.size();
+	elapsedTime = (clock() - startTime)/CLOCKS_PER_SEC; //variable here 
+	
+	throughputTotal = ((srvOp.packetSize * retransmittedPackets)/elapsedTime) / 1000 / 100;
+	
+	effThroughput = ((srvOp.packetSize * sentPackets)/elapsedTime) / 1000 / 100;
+	
   	cout << "Number of original packets sent: " << sentPackets << endl;
 	cout << "Number of retransmitted packets: " << retransmittedPackets << endl;
 	cout << "Total elapsed time: " << elapsedTime << endl;
@@ -1294,6 +1307,7 @@ private:
 	double elapsedTime;
 	double throughputTotal;
 	double effThroughput;
+	int startTime;
 	
 	int seqLow;
 	int seqHi;
