@@ -904,7 +904,7 @@ string read_() {
 		return;
 	}
 	
-	cout << "line decoded: " << line << endl;
+	//cout << "line decoded: " << line << endl;
 	if(line == "HOLUP"){
 		start_read();
 		return;

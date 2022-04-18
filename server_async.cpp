@@ -1267,6 +1267,7 @@ string read_() {
 
 		} //end for loop
 #ifdef debug
+		waitForAck(&currAck);
 	   cout << "Sent! Telling client to exit." << endl;
 #endif
 	   send_(finish);
