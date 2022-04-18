@@ -942,11 +942,11 @@ public:
 	seqLow = srvOp.seqLower;
 	seqHi = srvOp.seqUpper;
 
-	int sentPackets = 0;
-	int retransmittedPackets = 0;
-	double elapsedTime = 0;
-	double throughputTotal = 0;
-	double effThroughput = 0;
+	sentPackets = 0;
+	retransmittedPackets = 0;
+	elapsedTime = 0;
+	throughputTotal = 0;
+	effThroughput = 0;
 
 	//wait for ack, but this is generic so not using waitforack function
 	while(val != "ACK"){
@@ -1178,7 +1178,7 @@ string read_() {
 			if(needAck == true){ //if we need an ack here, wait for it! if it times out here, we can handle it in the function
 #ifdef debug
 				cout << "waiting for ack..." << endl;
-				send_("eoframe");
+				//send_("eoframe");
 #endif
 				other = waitForAck(&currAck); //ack number is iterated here!
 				needAck = false;
@@ -1245,11 +1245,11 @@ string read_() {
 
 					//shift to next state
 #ifdef debug
-					cout << "shifting beginning of window to " << (win_start + winSize) << endl;
+					cout << "shifting beginning of window to " << (win_start + 1) << endl;
 #endif
-					win_start += winSize; //move to next frame outside of the window
-					win_end += winSize;
-					curr_frame = win_start;
+					win_start ++; //move to next frame outside of the window
+					win_end ++;
+					curr_frame ++;
 
 				} else {
 #ifdef debug

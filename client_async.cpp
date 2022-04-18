@@ -854,6 +854,8 @@ string read_() {
 	//Read handler. We are only receiving packets, so this will parse them and do what we need to do.
   void handle_read(const bs::error_code& ec, std::size_t n)
   {
+	  
+	sendAck = true;
 	  tcp_packet curr_pack;
 	  tcp_header curr_head;
 
@@ -901,7 +903,8 @@ string read_() {
 		start_read();
 		return;
 	}
-	//cout << "line decoded: " << line << endl;
+	
+	cout << "line decoded: " << line << endl;
 	if(line == "HOLUP"){
 		start_read();
 		return;
