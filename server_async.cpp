@@ -1267,6 +1267,7 @@ string read_() {
   	cout << "Session successfully terminated" << endl << endl;
 	
 	sentPackets = bodies.size();
+	retransmittedPackets -= sentPackets;
 	elapsedTime = (clock() - startTime)/CLOCKS_PER_SEC; //variable here 
 	
 	throughputTotal = ((srvOp.packetSize * retransmittedPackets)/elapsedTime) / 1000 / 100;
