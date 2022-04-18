@@ -13,7 +13,7 @@
 #include <bitset>
 #include <cmath>
 
-//#define DEBUG
+#define DEBUG
 
 using boost::asio::steady_timer;
 using boost::asio::ip::tcp;
@@ -475,7 +475,7 @@ int writeFile(PacketStream *packets, string fPath){
 		for(tcp_packet p : *packets){
 			t_bod = p.body;
 			//cout << "t bod = " << t_bod << endl;
-			t_bod = base64_decode(t_bod); 
+			t_bod = base64_decode(t_bod);
 			for(char c : t_bod){
 				file.push_back(c);
 			}
@@ -516,7 +516,7 @@ int writeFile(PacketStream *packets, string fPath){
 		}
 
 
-		// This wraps the bits that have overflowed (if there are multiple 
+		// This wraps the bits that have overflowed (if there are multiple
 		//carries, all happen at once)
 		if (carry) { // 1001 + 1000 = 10001 -> '1' + '0001'
 			numCarries += 1;
@@ -539,7 +539,7 @@ int writeFile(PacketStream *packets, string fPath){
 
 		return complimentStr;
 	}
-	
+
 	bool validateChecksum(tcp_header curr, int packetSize){
 			// Validate checksum
 			std::string sumNumTotal = "";
@@ -557,7 +557,7 @@ int writeFile(PacketStream *packets, string fPath){
 
 			int numCarries = 0; // How many times the sum will wrap/carry over
 
-			// Takes the sum of the packet headers 
+			// Takes the sum of the packet headers
 			sumNumTotal = sumNum(emptyBits.to_string(), currS_Port.to_string(), &numCarries);
 			sumNumTotal = sumNum(sumNumTotal, currD_Port.to_string(), &numCarries);
 			sumNumTotal = sumNum(sumNumTotal, currSeq_Num.to_string(), &numCarries);
@@ -569,20 +569,20 @@ int writeFile(PacketStream *packets, string fPath){
 			std::bitset<16> carriesBin(numCarries);
 
 			sumNumTotal = sumNum(sumNumTotal, carriesBin.to_string(), &numCarries);
-			
-			
-			numCarries = 0; 
+
+
+			numCarries = 0;
 
 			// Find the checksum value (the one's compliment of the sumNumTotal)
 			std::string complimentChecksum = onesCompliment(sumNumTotal);
-			
+
 			// Sum the sumNumTotal and complimentChecksum value
 			std::string checksum = sumNum(sumNumTotal, complimentChecksum, &numCarries);
 
 			// Take the one's compliment of the checksum value (should be 0 if no errors, anything else is an error)
 			std::string checksumValue = onesCompliment(checksum);
 			std::bitset<16> checksumBits(checksumValue);
-			
+
 			/*
 			//cout << "" << << endl;
 			cout << "Checksum Value  = " << complimentChecksum << endl;
@@ -594,13 +594,13 @@ int writeFile(PacketStream *packets, string fPath){
 			if (checksumBits.to_ulong() != 0) {
 				cout << "Checksum failed!" << endl;
 				return false;
-			} else { 
+			} else {
 				cout << "Checksum OK!" << endl;
 				return true;
 			}
-			
+
 			return complimentChecksum == currChecksum.to_string();
-			
+
 	}
 
 
@@ -724,10 +724,9 @@ private:
 	#ifdef DEBUG
 		cout << endl << "Configuration Loaded! Current Config: " << endl << endl << srvOp.toString() << endl;
 	#endif
-	start_read();
-	
+
 	sendAck = false; //we don't want to send acks just yet. We will when we have to
-	
+
 	winSize = srvOp.slidingWinSize;
 	win_start = 0;
 	win_end = winSize - 1;
@@ -735,28 +734,37 @@ private:
 
 	currAck = 1;
 	protocol = srvOp.proType;
+	string firsty = read_();
+	seq_curr = stoi(firsty);
+	send_("ACK");
+
+	cout << "first seq number: " << seq_curr << endl;
+
+	//seq_last = 0;
+	seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
+	cout << "Initial Last: " << seq_last << endl;
 	
-	seq_curr = 0;
-	seq_last = 0;
 	packInd = 0;
-	
+
 	seqLow = srvOp.seqLower;
-	
+
 	resended = false;
 	seqHi = srvOp.seqUpper;
-	
+
 	dropAcks = srvOp.loseAck;
-	
+
+	start_read();
+
 		int dropSize = dropAcks.size();
 		if(dropSize > 0){
 			currLossInd = 0;
-		
+
 			currLoss = dropAcks[currLossInd] - 1;
 		} else {
 			currLossInd = -1;
 			currLoss = -1;
 		}
-	
+
 	std::string c = "Ack numbers to be lost: ";
 	for(int n : dropAcks){
 		c = c + "" + std::to_string(n) + " ";
@@ -822,8 +830,8 @@ string read_() {
 
 
 /* For reference, shit we initialized in this class
-  
-	//init window 
+
+	//init window
 	int winSize = srvOp.slidingWinSize;
 	int win_start = 0;
 	int win_end = winSize - 1;
@@ -859,13 +867,13 @@ string read_() {
 			line = "";
 			input_buffer_ = "";
 			//cout << "cleared input buffer: " << input_buffer_ << endl;
-			
-			
+
+
 			resended = true;
 
 			//HANDLE CLI SIDE TIMEOUT
 			send_("RESEND");
-			
+
 			timed = false;
 			start_read();
 			return;
@@ -881,9 +889,9 @@ string read_() {
       // Extract the newline-delimited message from the buffer.
       std::string line(input_buffer_.substr(0, n - 1));
       input_buffer_.erase(0, n);
-	  
+
 	  //cout << "line before: " << line << endl;
-	
+
 	try {
 		line = base64_decode(line);
 	} catch (std::exception e) {
@@ -912,12 +920,12 @@ string read_() {
 			cout << endl << "Finished up. On to the next thing." << endl;
 		#endif
 		writeFile(&packets, "client_out");
-		
+
 		originialPackets = packets.size();
-		
+
 		//OUTPUT
 		printOutput();
-		
+
 		//close client
 		socket_.close();
 		stop();
@@ -931,8 +939,10 @@ string read_() {
 		   //send_("ACK");
 		   start_read();
 		   return;
-		   
+
 	   } else { //Default case. This is a packet so read it into packets
+	   
+	   if(line != "eoframe"){
 			bool isvalid;
 			//cout << "got hereeee. line=" << line << endl;
 			curr_pack = readPacket(line);
@@ -942,10 +952,10 @@ string read_() {
 
 			curr_head = readHeader(curr_pack.header);
 			//DO STUFF
-			
+
 			//validate checksum
 			isvalid = validateChecksum(readHeader(curr_pack.header), srvOp.packetSize);
-			
+
 			if(isvalid){
 				//cout << "valid " << endl;
 			} else {
@@ -959,51 +969,72 @@ string read_() {
 					}
 				}
 				cout << "]" << endl;
-				
-				
+
+
 				//resend
 				resended = true;
 			}
-			
+
 			//check seq nums
 			seq_curr = (uint32_t)curr_head.seq_num;
-			
+
 			//cout << "current seq num: " << seq_curr << endl;
 
-			if(seq_last == 0){
-				seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
-			} else {
+			//if(seq_last == 0){
+			//	seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
+			//} else {
 				int expectedlast = lastSeqNum(seq_curr, seqHi, seqLow);
-				//cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
+				cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
+				cout << "current is " << seq_curr << endl;
 				if(seq_last != expectedlast){
 					resended = true;
+					cout << "Missing packet with seq " << seq_curr << endl;
 					#ifdef DEBUG
-						cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
-						cout << "current is " << seq_curr << endl;
+						//cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
+						//cout << "current is " << seq_curr << endl;
 					#endif
 				}
-			}
-			
-			
-			if(resended == true && curr_frame >= win_end){
+			//}
+
+	   //cout << "Win end: " << win_end << endl;
+	   } else {
+		   cout << "frame end!" << endl;
+		   //win_end -= winSize;
+		   //win_start -= winSize;
+		   //curr_frame = win_end;
+		   
+		   sendAck = true;
+		   
+		   if(curr_frame < win_end){
+			   curr_frame = win_end;
+		   }
+		   
+		   cout << "After ending, current frame is " << curr_frame << " and current end is " << win_end << endl;
+	   }
+
+
+			if(resended == true && curr_frame == win_end){
 			//we missed something!!
 					std::string aya = "";
 					std::string linea = "";
 					size_t len;
 					string readit;
-					
+
+					cout << "crap..." << endl;
+
 					switch(protocol){
 						case 1: //GBN
 							//resend
 							//clearSock(n);
-							
 							//pop back entire frame
 							#ifdef DEBUG
 								cout << "here" << endl;
 							#endif
-							//seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
+							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
 							for(int f = curr_frame; f > win_start; f--){
-								packets.pop_back();
+								if(packets.size() > 0){
+									packets.pop_back();
+								}
 								#ifdef DEBUG
 									cout << "packet size is " << packets.size() << endl;
 								#endif
@@ -1014,25 +1045,28 @@ string read_() {
 								#endif
 							}
 							
+							cout << "got here with segfault" << endl;
+
 							seq_curr = seq_last;
 							seq_last = lastSeqNum(seq_last, seqHi, seqLow);
 							
+
 							#ifdef DEBUG
 								cout << "new curr sequence: " << seq_curr << endl;
 								cout << "new last sequence: " << seq_last << endl;
-							
+
 								cout << "window start before back shift " << win_start << " and end is " << win_end << " and current frame is " << curr_frame << endl;
 							#endif
-							
+
 							//reinit the window and frame
 							//win_start -= winSize;
 							//win_end -= winSize;
 							curr_frame = win_start;
-						
+
 							#ifdef DEBUG
 								cout << "shift frame back to " << curr_frame << endl;
 							#endif
-							send_("RESEND"); //tell server to resend.					
+							send_("RESEND"); //tell server to resend.
 							while(aya != "HOLUP"){
 								#ifdef DEBUG
 									cout << "waiting....." << endl;
@@ -1042,13 +1076,13 @@ string read_() {
 								//clear input
 							}
 							aya = "";
-							
+
 							#ifdef DEBUG
 								cout << "got here!" << endl;
 							#endif
 
 							send_("GO");
-							
+
 							sendAck = false;
 							resended = false;
 							start_read();
@@ -1058,13 +1092,13 @@ string read_() {
 							break;
 				}//end missed
 			}
-				
-			
+
+
 			//cout << "window end: " << win_end << endl;f
 			//frame shift 	do we need an ack on this one?
 			if(curr_frame == win_end){ //current frame is the final in the window
-				sendAck = true; //we need this, commented out for the time being for testing
-				
+				//sendAck = true; //we need this, commented out for the time being for testing
+
 				//shift to next state
 				#ifdef DEBUG
 					cout << "shifting beginning of window to " << (win_start + winSize) << endl;
@@ -1073,22 +1107,22 @@ string read_() {
 				win_start += winSize; //move to next frame outside of the window
 				win_end += winSize;
 				curr_frame = win_start;
-				
+
 			} else {
 				#ifdef DEBUG
 					cout << "shift from " << curr_frame << " to " << (curr_frame + 1) << endl;
 				#endif
 				curr_frame++; //move right
 			}
-			
-			
+
+
 			//Handle stuff
-			
-			
-			
-		//Send ack 
+
+
+
+		//Send ack
 		  if (!line.empty() && sendAck == true) { //we should send an ack as main program! so let's iterate the ack num too after we do so
-		  
+
 				if(currAck != currLoss){
 					send_(ackit);
 					cout << "Ack " << currAck << " sent" << endl;
@@ -1112,7 +1146,7 @@ string read_() {
 					}
 				}
 				cout << "]" << endl;
-		  }	
+		  }
 			seq_last = seq_curr; //set last
 			//cout << "last after: " << seq_last;
 			packets.push_back(curr_pack);
@@ -1227,26 +1261,26 @@ private:
   steady_timer deadline_;
   steady_timer heartbeat_timer_;
   PacketStream packets;
-  
+
   IntVec dropAcks;
-  
+
 	int currLoss;
 	int currLossInd;
-	
+
 	int dropSize;
-  
+
   int seqLow;
   int seqHi;
-  
+
   int seq_last;
   int seq_curr;
-  
-	//init window 
+
+	//init window
 	int winSize;
 	int win_start;
 	int win_end;
 	int curr_frame;
-	
+
 	int packInd;
 
 	int currAck;
@@ -1256,12 +1290,12 @@ private:
 	uint32_t lastPcktSeqNum;
 	int originialPackets;
 	int retransmittedPackets;
-	
+
 	int protocol;
 //protocol numbers:
 // 1 -> GBN
 // 2 -> SR
-	
+
 
 };
 

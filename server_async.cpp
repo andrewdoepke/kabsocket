@@ -14,7 +14,7 @@
 #include <filesystem>
 #include <bitset>
 #include <ctime>
-//#define debug
+#define debug
 
 using namespace boost::asio;
 namespace bs = boost::system;
@@ -294,7 +294,7 @@ int genSeqNum(int lower, int upper){
 }
 
 //Gets a sequence number given the last number in sequence and the range to wrap on.
-int getSeqNum(int last, int upper, int lower) {	
+int getSeqNum(int last, int upper, int lower) {
 	if(last == upper){
 		return lower; //wrap
 	} else {
@@ -421,7 +421,7 @@ srv_options srvOpData(srv_options srv, std::string json){
 
 	IntVec loseA;
 
-	pt::ptree &array2 = reader.get_child("dropPacket");
+	pt::ptree &array2 = reader.get_child("loseAck");
 	j = 0;
 	for(pt::ptree::iterator element = array2.begin(); element != array2.end(); element++){
 		loseA.push_back(element->second.get<int>(std::to_string(j)));
@@ -507,7 +507,7 @@ srv_options userInput(srv_options server_options){
 			cout << "Using a ping-based timeout interval" << endl; //calculate this per connection, so we can do this when we open each connection
 			//continue loop
 			//BIG TODO: Make sure we check for this later instead of having a 0 timeout
-			
+
 			timeout = 10; //ping based? i sure think so...
 		} else if(timeout < 0 || !readIsInt(inp)){ //otherwise bad input so loop
 			cout << "Error! Invalid input. Please try again or CTR-C to quit." << endl;
@@ -730,7 +730,7 @@ void stageFile(int packetSize, std::vector<char> *buff, StrVec *out) {
 	int buffSize = buff->size();
 	int progCount = buffSize;
 	int bodySize = packetSize - header_size;
-	
+
 	//cout << "Buffer size: " << buffSize << " and body size: " << bodySize << endl;
 
 	   while(bC < buffSize){ //split packets
@@ -748,9 +748,9 @@ void stageFile(int packetSize, std::vector<char> *buff, StrVec *out) {
 #ifdef debug
 			 cout << "Bytes left to go: " << progCount << endl;
 #endif
-			
+
 			//tempbod = base64_encode(tempbod);
-			
+
 			 out->push_back(tempbod);
 	   }//end while
 }
@@ -811,7 +811,7 @@ void advanceHeader(tcp_header *last, srv_options *srvOp, uint8_t flag){
 		}
 
 
-		// This wraps the bits that have overflowed (if there are multiple 
+		// This wraps the bits that have overflowed (if there are multiple
 		//carries, all happen at once)
 		if (carry) { // 1001 + 1000 = 10001 -> '1' + '0001'
 			numCarries += 1;
@@ -850,7 +850,7 @@ void advanceHeader(tcp_header *last, srv_options *srvOp, uint8_t flag){
 
 			int numCarries = 0; // How many times the sum will wrap/carry over
 
-			// Takes the sum of the packet headers 
+			// Takes the sum of the packet headers
 			sumNumTotal = sumNum(emptyBits.to_string(), currS_Port.to_string(), &numCarries);
 			sumNumTotal = sumNum(sumNumTotal, currD_Port.to_string(), &numCarries);
 			sumNumTotal = sumNum(sumNumTotal, currSeq_Num.to_string(), &numCarries);
@@ -863,18 +863,18 @@ void advanceHeader(tcp_header *last, srv_options *srvOp, uint8_t flag){
 
 			sumNumTotal = sumNum(sumNumTotal, carriesBin.to_string(), &numCarries);
 
-			numCarries = 0; 
+			numCarries = 0;
 
 			// Find the checksum value (the one's compliment of the sumNumTotal)
 			std::string complimentChecksum = onesCompliment(sumNumTotal);
 			uint16_t checker = (uint16_t)((std::bitset<16>(complimentChecksum)).to_ulong());
-			
+
 			//cout << "checker val = " << checker << " and complimentChecksum = " << complimentChecksum << endl;
-			
+
 			return checker;
 	}
-	
-	
+
+
 	//Gets a sequence number given the last number in sequence and the range to wrap on.
 int lastSeqNum(int curr, int upper, int lower) {
 	if(curr == lower){
@@ -938,16 +938,16 @@ public:
 #endif
 
 	string val = "";
-	
+
 	seqLow = srvOp.seqLower;
 	seqHi = srvOp.seqUpper;
-	
+
 	int sentPackets = 0;
 	int retransmittedPackets = 0;
 	double elapsedTime = 0;
 	double throughputTotal = 0;
 	double effThroughput = 0;
-	
+
 	//wait for ack, but this is generic so not using waitforack function
 	while(val != "ACK"){
 		val = read_();
@@ -958,7 +958,7 @@ public:
 			//handle timeout
 		}
 	}
-	
+
 	needAck = false; //we don't need acks yet, until we need them
 	//cout << "Back in parent: " << val << endl;
 #ifdef debug
@@ -968,7 +968,7 @@ public:
 	filesend_(&srvOp);
   }
 
-  
+
 
   //Read a string from a socket until it hits our delim
 string read_() {
@@ -1015,7 +1015,7 @@ string read_() {
           boost::asio::placeholders::bytes_transferred));
   }
 
-  
+
   void handleTimeout(){
 #ifdef debug
 	cout << "Timed out! sad." << endl;
@@ -1028,19 +1028,19 @@ string read_() {
 	return;
 	//handle timeout
   }
-  
+
   //This will wait for an ack to come in
   string waitForAck(int *ack_number){
 	string validate = "";
 	string other = "";
 	string ackit = getConstStr(ACK);
-	
+
 	while(validate != ackit){ //wait for an ack
 		validate = read_();
 		if(validate=="TIMEOUT"){
 			handleTimeout();
 		} else { //something other than an ack or a timeout
-			other = validate; 
+			other = validate;
 			return other;
 		}
 	}
@@ -1048,7 +1048,7 @@ string read_() {
 	*ack_number++;
 	return other;
   }
-  
+
 
   //Send the file
     void filesend_(srv_options *options) {
@@ -1064,11 +1064,11 @@ string read_() {
 #endif
 		int currLoss;
 		int currLossInd;
-		
+
 		int dropSize = dropPacket.size();
 		if(dropSize > 0){
 			currLossInd = 0;
-		
+
 			currLoss = dropPacket[currLossInd] - 1;
 		} else {
 			currLossInd = -1;
@@ -1078,7 +1078,7 @@ string read_() {
 
 		string validate = "";
 		string exit = "EXIT";
-		
+
 		int protocol = options->proType;
 		//protocol numbers:
 		// 1 -> GBN
@@ -1088,36 +1088,46 @@ string read_() {
 		string tempPack;
 		tcp_header curr_head;
 		tcp_packet curr_packet;
-		
+
 		string other = "a";
 
 		//cout << "Ready to send" << endl;
+
+		curr_head = initHeader(options);
+
+		//tell client the first expected seq number, in case of dropping the first packets
+		string firsty = std::to_string(curr_head.seq_num);
+		cout << "first: " << firsty << endl;
+		send_(firsty);
+
+		int allll = 0;
+
+		waitForAck(&allll);
 
 		int i;
 		int limit = bodies.size();
 		string b;
 		startTime = clock();
-		
+
 		int winSize = srvOp.slidingWinSize;
-		//init window 
+		//init window
 		int win_start = 0;
 		int win_end = winSize - 1; //-1 for zero-indexed shite
-		
+
 		bool advance;
-		
+
 		bool first = true;
-		
+
 		int currAck = 1; //current ack
-		
+
 		int curr_frame = 0; //current frame number within window
-		
-		
+
+
 		for(i = 0; i < limit; i++){ //begin building and sending all packets. Flow of program managed by this
 			b = bodies[i]; //Current body encoded
 			advance = true;
 			other = "";
 			if(first){ //first iteration
-				curr_head = initHeader(options);
 				first = false;
 			} else { //advance our header
 			int currr = curr_head.seq_num;
@@ -1127,52 +1137,59 @@ string read_() {
 				int hello = getSeqNum(currr, seqHi, seqLow);
 				curr_head.seq_num = (uint32_t)hello;
 				//cout << "current sequence after: " << curr_head.seq_num << endl;
-				
-				
+
+
 				//advanceHeader(&curr_head, options, IGN); //advance the header. idk
 			}
-			
+
 			//Load checksum into header
-			
-			
+
+
 			curr_head.checksum = generateChecksum(curr_head, srvOp.packetSize);
-			
+
 
 			curr_packet.body = base64_encode(b); //encode the body..
 			//cout << "body encodded " << curr_packet.body << endl;
 			curr_packet.header = curr_head.toJson(); //Set the current packet header
 
 			tempPack = curr_packet.toJson();
-			
+
 			//cout << "current packet index we need to lose: " << currLoss << endl;
 			//cout << "Drop Packet Size: " << dropSize << " and current index is " << currLossInd << endl;
 			
+			if(curr_frame == win_end){ //current frame is the final in the window
+					needAck = true; //we need this, commented out for the time being for testing
+			}
+
 			if(i != currLoss){
 				send_(tempPack);
 				retransmittedPackets++;
-			} else if(currLossInd < dropSize && currLossInd >= 0) {
-					currLoss = dropPacket[currLossInd] - 1;
+			} else if(currLossInd <= dropSize && currLossInd >= 0) {
+					cout << "Dropped at currLoss " << currLoss << endl;
 					currLossInd++;
+					currLoss = dropPacket[currLossInd] - 1;
+					cout << "New currLoss to drop: " << currLoss << " at currLossInd " << currLossInd << endl;
 				} else  { //lose the packet
 					currLoss = -1;
 					currLossInd = -1;
 			}
-			
-			
+
+
 			if(needAck == true){ //if we need an ack here, wait for it! if it times out here, we can handle it in the function
 #ifdef debug
 				cout << "waiting for ack..." << endl;
+				send_("eoframe");
 #endif
 				other = waitForAck(&currAck); //ack number is iterated here!
 				needAck = false;
 			}
-			
+
 			if(other == "RESEND"){
 				other = "a"; //random string
 				string she = "";
 #ifdef debug
 				cout << "Resending..." << endl;
-#endif				
+#endif
 				while (she != "GO"){
 					send_("HOLUP");
 					she = "";
@@ -1180,9 +1197,13 @@ string read_() {
 					she = read_();
 #ifdef debug
 					cout << "got: " << she << endl;
+					
+					if(she == "bad"){
+						return;
+					}
 #endif
 				}
-				
+
 				she = "";
 #ifdef debug
 				cout << "Confirmed. Handle protocol!" << endl;
@@ -1190,18 +1211,18 @@ string read_() {
 				//handle resending
 				switch(protocol){
 					case 1: //GBN
-					
+
 						//reinit the window and frame
-						win_start -= winSize;
-						win_end -= winSize;
+						//win_start -= winSize;
+						//win_end -= winSize;
 						curr_frame = win_start;
 #ifdef debug
 						cout << "Lost a packet! Resending frame starting at " << win_start << "..." << endl;
 #endif
-						cout << "Packet " << curr_frame << " Re-transmitted." << endl;
+						cout << "Packet " << i << " Re-transmitted." << endl;
 						//pop back entire frame
-						i -= winSize + 1;
-						
+						i -= (winSize);
+
 						for(int f = 0; f < winSize; f++){
 							curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
 						}
@@ -1216,27 +1237,27 @@ string read_() {
 						break;
 				}//end switch
 			}//end if
-			
+
 			if(advance){
 				//frame shift 	do we need an ack on this one?
 				if(curr_frame == win_end){ //current frame is the final in the window
-					needAck = true; //we need this, commented out for the time being for testing
-					
+					//needAck = true; //we need this, commented out for the time being for testing
+
 					//shift to next state
 #ifdef debug
-					cout << "shifting beginning of window to " << (win_start + winSize) << endl; 
+					cout << "shifting beginning of window to " << (win_start + winSize) << endl;
 #endif
 					win_start += winSize; //move to next frame outside of the window
 					win_end += winSize;
 					curr_frame = win_start;
-					
+
 				} else {
 #ifdef debug
 					cout << "shift from " << curr_frame << " to " << (curr_frame + 1) << endl;
 #endif
 					curr_frame++;//move right
 				}
-				
+
 				if(curr_frame >= limit){ //we're past the end!
 #ifdef debug
 					cout << "current frame " << curr_frame << " and the final index was " << (limit-1) << endl;
@@ -1255,8 +1276,8 @@ string read_() {
 #endif
 
 		other = waitForAck(&currAck); //final wait for the ack, since we finished. This will always have to happen
-		
-	//OUTPUT	
+
+	//OUTPUT
 	printOutput();
 #ifdef debug
 	  cout << "Finished processing this one." << endl << endl;
@@ -1265,15 +1286,15 @@ string read_() {
 
   void printOutput() {
   	cout << "Session successfully terminated" << endl << endl;
-	
+
 	sentPackets = bodies.size();
 	retransmittedPackets -= sentPackets;
-	elapsedTime = (clock() - startTime)/CLOCKS_PER_SEC; //variable here 
-	
+	elapsedTime = (clock() - startTime)/CLOCKS_PER_SEC; //variable here
+
 	throughputTotal = ((srvOp.packetSize * retransmittedPackets)/elapsedTime) / 1000 / 100;
-	
+
 	effThroughput = ((srvOp.packetSize * sentPackets)/elapsedTime) / 1000 / 100;
-	
+
   	cout << "Number of original packets sent: " << sentPackets << endl;
 	cout << "Number of retransmitted packets: " << retransmittedPackets << endl;
 	cout << "Total elapsed time: " << elapsedTime << endl;
@@ -1309,7 +1330,7 @@ private:
 	double throughputTotal;
 	double effThroughput;
 	int startTime;
-	
+
 	int seqLow;
 	int seqHi;
 };
@@ -1357,27 +1378,28 @@ private:
 
 
 int main(int argc, char *argv[]) {
-	
+
 	if(argc < 2){
 		cout << "Please append a filename to the run command." << endl;
 		return 1;
 	}
 	string filePath = argv[1]; //take filename as cmd input
-	
+
 	//check if file exists
 	if(!std::filesystem::exists(filePath)){
 		cout << "File doesn't exist. Retry running." << endl;
 		return 1;
 	}
-	
+
 	//Take user input
 	srvOp = userInput(srvOp);
+	cout << "Options: " << srvOp.toString() << endl;
 	cout << "Loading File..." << endl;
 	//string filePath = "hi.txt";
 
-	
+
 	loadFile(&srvOp, filePath);
-	
+
 	if(errType == 2){
 		populateRandoms(&srvOp.dropPacket, &srvOp.loseAck, bodies.size());
 	}
