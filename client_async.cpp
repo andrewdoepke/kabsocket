@@ -1005,7 +1005,7 @@ string read_() {
 		   
 		   sendAck = true;
 		   
-		   if(curr_frame < win_end){
+		   if(curr_frame < win_end && resended){
 			   curr_frame = win_end;
 		   }
 		   
@@ -1031,10 +1031,13 @@ string read_() {
 								cout << "here" << endl;
 							#endif
 							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
-							for(int f = curr_frame; f > win_start; f--){
+							int f;
+							f = curr_frame;
+							for(f; f > win_start; f--){
 								if(packets.size() > 0){
 									packets.pop_back();
 								}
+								//curr_frame--;
 								#ifdef DEBUG
 									cout << "packet size is " << packets.size() << endl;
 								#endif
@@ -1045,7 +1048,7 @@ string read_() {
 								#endif
 							}
 							
-							cout << "got here with segfault" << endl;
+							//cout << "got here with segfault" << endl;
 
 							seq_curr = seq_last;
 							seq_last = lastSeqNum(seq_last, seqHi, seqLow);
@@ -1092,7 +1095,7 @@ string read_() {
 							break;
 				}//end missed
 			}
-
+			
 
 			//cout << "window end: " << win_end << endl;f
 			//frame shift 	do we need an ack on this one?
@@ -1147,6 +1150,11 @@ string read_() {
 				}
 				cout << "]" << endl;
 		  }
+		  
+		  if(line == "eoframe"){
+			  curr_frame--;
+		  }
+			
 			seq_last = seq_curr; //set last
 			//cout << "last after: " << seq_last;
 			packets.push_back(curr_pack);
@@ -1154,7 +1162,7 @@ string read_() {
 			packInd++;
 			//send_(ackit);
 			start_read();
-		}
+	   }
     } else {
 	if( ec != boost::asio::error::eof)
 			#ifdef DEBUG
