@@ -1165,7 +1165,7 @@ string read_() {
 			if(i != currLoss){
 				send_(tempPack);
 				retransmittedPackets++;
-			} else if(currLossInd <= dropSize && currLossInd >= 0) {
+			} else if(currLossInd < dropSize && currLossInd >= 0) {
 					cout << "Dropped at currLoss " << currLoss << endl;
 					currLossInd++;
 					currLoss = dropPacket[currLossInd] - 1;
@@ -1218,12 +1218,15 @@ string read_() {
 				//handle resending
 				switch(protocol){
 					case 1: //GBN
-
+						
+						cout << "Win start before is " << win_start << " and minus a winSize of " << winSize << " = " << (win_start - winSize) << endl;
 						//reinit the window and frame
-						win_start -= winSize;
+						//win_start -= winSize;
 						if(win_start < 0){
 							win_start = 0;
 						}
+						
+						
 						
 						/*for(int f = 0; f < winSize; f++){
 							if(win_start > 0){
@@ -1239,20 +1242,21 @@ string read_() {
 #ifdef debug
 						cout << "Lost a packet! Resending frame starting at " << win_start << "..." << endl;
 #endif
-						cout << "Packet " << i << " Re-transmitted." << endl;
+						//cout << "Packet " << i << " Re-transmitted." << endl;
 						//pop back entire frame
 						//i -= (winSize);
 						//i = curr_frame;
-						cout << "current frame: " << curr_frame << endl;
+						//cout << "current frame: " << curr_frame << endl;
 						while(i > curr_frame){
 							i--;
 							cout << "current i " << i << endl;
 							curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
 						}
 						
-						cout << "Set i to " << i << endl;
+						//cout << "Set i to " << i << endl;
 #ifdef debug
 						cout << "new starting packet: " << i << " with seq num " << curr_head.seq_num << endl;
+						i--;
 #endif
 						curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
 						other = "";
@@ -1316,7 +1320,15 @@ string read_() {
 		cout << "waiting for ACK to end..." << endl;
 #endif
 
-		other = waitForAck(&currAck); //final wait for the ack, since we finished. This will always have to happen
+		//other = waitForAck(&currAck); //final wait for the ack, since we finished. This will always have to happen
+		validate = "";
+
+		while(validate != "DONE"){ //wait for an ack
+			validate = read_();
+			if(validate=="TIMEOUT"){
+				handleTimeout();
+			}
+		}
 
 	//OUTPUT
 	printOutput();

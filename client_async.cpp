@@ -731,6 +731,11 @@ private:
 	win_start = 0;
 	win_end = winSize - 1;
 	curr_frame = 0;
+	
+	seqLow = srvOp.seqLower;
+
+	resended = false;
+	seqHi = srvOp.seqUpper;
 
 	currAck = 1;
 	protocol = srvOp.proType;
@@ -740,16 +745,11 @@ private:
 
 	cout << "first seq number: " << seq_curr << endl;
 
-	//seq_last = 0;
+	seq_last = 0;
 	seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
-	cout << "Initial Last: " << seq_last << endl;
+	//cout << "Initial Last: " << seq_last << endl;
 	
 	packInd = 0;
-
-	seqLow = srvOp.seqLower;
-
-	resended = false;
-	seqHi = srvOp.seqUpper;
 
 	dropAcks = srvOp.loseAck;
 
@@ -905,7 +905,7 @@ string read_() {
 		return;
 	}
 	
-	cout << "line decoded: " << line << endl;
+	//cout << "line decoded: " << line << endl;
 	if(line == "HOLUP"){
 		start_read();
 		return;
@@ -919,7 +919,7 @@ string read_() {
 		socket_.close();
 		stop();
 	  } else if(line == finish){ //we should finish up
-		send_(ackit); //send an ack since this part kills the program
+		send_("DONE"); //send an ack since this part kills the program
 		#ifdef DEBUG
 			cout << endl << "Finished up. On to the next thing." << endl;
 		#endif
@@ -1032,15 +1032,37 @@ string read_() {
 							//resend
 							//clearSock(n);
 							//pop back entire frame
+							
 							#ifdef DEBUG
 								cout << "here" << endl;
+								cout << "starting window loc: " << win_start << endl;
 							#endif
-							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
+							
 							int f;
 							f = curr_frame;
+							
+							//win_start -= (win_end - curr_frame);
+							//if(win_start < 0){
+							//	win_start = 0;
+							//}
+							
+							//cout << "starting Window loc after " << win_start << endl;
+							
+							int tempo;
+							tempo = lastSeqNum(seq_curr, seqHi, seqLow);
+							while(tempo != seq_last){
+								f++;
+								//win_start++;
+								tempo = lastSeqNum(tempo, seqHi, seqLow);
+							}
+							
+							f--;
+													
+							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
 							for(f; f > win_start; f--){
 								if(packets.size() > 0){
 									packets.pop_back();
+									cout << "New packet size: " << packets.size() << endl;
 								}
 								//curr_frame--;
 								#ifdef DEBUG
@@ -1053,10 +1075,16 @@ string read_() {
 								#endif
 							}
 							
+							
 							//cout << "got here with segfault" << endl;
+							
+							//if(win_start > 0){
+							//	seq_last = lastSeqNum(seq_last, seqHi, seqLow);
+							//}
 
 							seq_curr = seq_last;
 							seq_last = lastSeqNum(seq_last, seqHi, seqLow);
+							
 							
 
 							#ifdef DEBUG
@@ -1110,12 +1138,18 @@ string read_() {
 
 				//shift to next state
 				#ifdef DEBUG
-					cout << "shifting beginning of window to " << (win_start + winSize) << endl;
+					cout << "shifting beginning of window to " << (win_start + 1) << endl;
 				#endif
+				
+				
 
-				win_start += winSize; //move to next frame outside of the window
-				win_end += winSize;
-				curr_frame = win_start;
+				//win_start += winSize; //move to next frame outside of the window
+				//win_end += winSize;
+				//curr_frame = win_start;
+				
+				win_start ++; //move to next frame outside of the window
+				win_end ++;
+				curr_frame ++;
 
 			} else {
 				#ifdef DEBUG
@@ -1136,6 +1170,7 @@ string read_() {
 					send_(ackit);
 					cout << "Ack " << currAck << " sent" << endl;
 					currAck++;
+					
 				} else if(currLossInd < dropSize && currLossInd >= 0) {
 						currLoss = dropAcks[currLossInd] - 1;
 						currLossInd++;
