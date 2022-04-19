@@ -1377,8 +1377,8 @@ string read_() {
   	cout << "Number of original packets sent: " << sentPackets << endl;
 	cout << "Number of retransmitted packets: " << retransmittedPackets << endl;
 	cout << "Total elapsed time: " << elapsedTime << " seconds" << endl;
-	cout << "Total throughput: " << throughputTotal << " Mb/s" << endl;
-	cout << "Effective throughput: " << effThroughput << " Mb/s" << endl;
+	cout << "Total throughput (Mbps): " << throughputTotal << endl;
+	cout << "Effective throughput: " << effThroughput << endl;
 }
 
 private:
