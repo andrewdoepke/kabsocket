@@ -956,6 +956,7 @@ public:
 			cout << "Timed out! sad." << endl;
 #endif
 			//handle timeout
+			//send_("HOLUP");
 		}
 	}
 
@@ -1190,7 +1191,8 @@ string read_() {
 #ifdef debug
 				cout << "Resending..." << endl;
 #endif
-				while (she != "GO"){
+				
+				/*while (she != "GO"){
 					send_("HOLUP");
 					she = "";
 					//cout << "waiting for the go ahead to resend" << endl;
@@ -1198,13 +1200,17 @@ string read_() {
 #ifdef debug
 					cout << "got: " << she << endl;
 					
+					//if(she == "GIVEMEHOLUP"){
+						send_("HOLUP");
+					//}
+					
 					if(she == "bad"){
 						return;
 					}
 #endif
 				}
 
-				she = "";
+				she = "";*/
 #ifdef debug
 				cout << "Confirmed. Handle protocol!" << endl;
 #endif
@@ -1214,23 +1220,45 @@ string read_() {
 
 						//reinit the window and frame
 						//win_start -= winSize;
+						
+						for(int f = 0; f < winSize; f++){
+							if(win_start > 0){
+								win_start--;
+							}
+							curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
+						}
+
+						
 						//win_end -= winSize;
+						win_end = win_start + winSize;
 						curr_frame = win_start;
 #ifdef debug
 						cout << "Lost a packet! Resending frame starting at " << win_start << "..." << endl;
 #endif
 						cout << "Packet " << i << " Re-transmitted." << endl;
 						//pop back entire frame
-						i -= (winSize);
-
-						for(int f = 0; f < winSize; f++){
-							curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
-						}
+						//i -= (winSize);
+						i = curr_frame;
+						
+						cout << "Set i to " << i << endl;
 #ifdef debug
 						cout << "new starting packet: " << i << " with seq num " << curr_head.seq_num << endl;
 #endif
 						curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
 						other = "";
+						//send_("HOLUP");
+						
+						she = "";
+						
+						/*while (she != "GO"){
+							she = read_();
+							cout << "got: " << she << endl;
+						}
+						she = "";*/
+						
+						int jj;
+						//waitForAck(&jj);
+						
 						advance = false;
 						break;
 					case 2: //SR

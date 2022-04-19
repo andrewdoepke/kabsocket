@@ -800,7 +800,7 @@ string read_() {
 	   } catch (std::exception e) {
 	   	 #ifdef DEBUG
 			   cout << "dang " << endl;
-			   cout << data << endl;
+			   //cout << data << endl;
 		   #endif
 		   return "bad";
 	   }
@@ -899,6 +899,7 @@ string read_() {
 	} catch (std::exception e) {
 		#ifdef DEBUG
 			cout << "baddy" << endl;
+			cout << "got: " << line << endl;
 		#endif
 		start_read();
 		return;
@@ -1073,21 +1074,22 @@ string read_() {
 								cout << "shift frame back to " << curr_frame << endl;
 							#endif
 							send_("RESEND"); //tell server to resend.
+							/*
 							while(aya != "HOLUP"){
+								//send_("GIVEMEHOLUP");
 								#ifdef DEBUG
 									cout << "waiting....." << endl;
 								#endif
 								aya = read_();
-								//send_("GIVEMEHOLUP");
 								//clear input
-							}
+							}*/
 							aya = "";
 
 							#ifdef DEBUG
 								cout << "got here!" << endl;
 							#endif
 
-							send_("GO");
+							//send_("GO");
 
 							sendAck = false;
 							resended = false;
