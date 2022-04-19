@@ -13,7 +13,7 @@
 #include <bitset>
 #include <cmath>
 
-#define DEBUG
+//#define DEBUG
 
 using boost::asio::steady_timer;
 using boost::asio::ip::tcp;
@@ -486,9 +486,9 @@ int writeFile(PacketStream *packets, string fPath){
 
 		outfile.close();
 
-		#ifdef DEBUG
-			cout << "Successfully saved the file to: " << fPath << endl;
-		#endif
+		//#ifdef DEBUG
+			cout << endl << "Complete. \nSuccessfully saved the file to: " << fPath << endl << endl;
+		//#endif
 		return 0;
 	} catch(int e){
 		#ifdef DEBUG
@@ -720,7 +720,7 @@ private:
 	string configJson = read_();
 	send_("ACK");
 	
-	cout << "Config json: " << configJson << endl;
+	//cout << "Config json: " << configJson << endl;
 
 	srvOp = readSrvOp(configJson);
 	#ifdef DEBUG
@@ -990,17 +990,17 @@ string read_() {
 			//check seq nums
 			seq_curr = (uint32_t)curr_head.seq_num;
 
-			cout << "current seq num: " << seq_curr << endl;
+			//cout << "current seq num: " << seq_curr << endl;
 
 			//if(seq_last == 0){
 			//	seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
 			//} else {
 				int expectedlast = lastSeqNum(seq_curr, seqHi, seqLow);
-				cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
-				cout << "current is " << seq_curr << endl;
+				//cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
+				//cout << "current is " << seq_curr << endl;
 				if(seq_last != expectedlast){
 					resended = true;
-					cout << "Missing packet with seq " << seq_curr << endl;
+					//cout << "Missing packet with seq " << seq_curr << endl;
 					#ifdef DEBUG
 						//cout << "Last: " << seq_last << " and expected: " << expectedlast << endl;
 						//cout << "current is " << seq_curr << endl;
@@ -1302,9 +1302,13 @@ string read_() {
   }
 
   void printOutput() {
+		retransmittedPackets -= originialPackets;
+	  
+		//cout << endl << "Complete. " << endl << endl;
+		
 		cout << "Last packet seq# received: " << lastPcktSeqNum << endl;
 		cout << "Number of original packets received: " << originialPackets << endl;
-		cout << "Number of retransmitted packets received: " << retransmittedPackets << endl;
+		cout << "Number of retransmitted packets received: " << retransmittedPackets << endl << endl;
 	}
 
 private:

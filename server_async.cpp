@@ -14,7 +14,7 @@
 #include <filesystem>
 #include <bitset>
 #include <ctime>
-#define debug
+//#define debug
 
 using namespace boost::asio;
 namespace bs = boost::system;
@@ -927,7 +927,7 @@ public:
 
 
 
-	  cout << "Connected!" << endl;
+	  cout << "Connected!" << endl << endl << "Running..." << endl << endl;
 	//start_read();
 #ifdef debug	
 	cout << "Before sending, server options to string: " << srvOp.toString() << endl;
@@ -1104,7 +1104,7 @@ string read_() {
 
 		//tell client the first expected seq number, in case of dropping the first packets
 		string firsty = std::to_string(curr_head.seq_num);
-		cout << "first: " << firsty << endl;
+		//cout << "first: " << firsty << endl;
 		send_(firsty);
 
 		int allll = 0;
@@ -1315,7 +1315,7 @@ string read_() {
 			}
 
 		} //end for loop
-		cout << "here. Exited the loopy" << endl;
+		//cout << "here. Exited the loopy" << endl;
 		//waitForAck(&currAck);
 #ifdef debug
 	   cout << "Sent! Telling client to exit." << endl;
@@ -1408,7 +1408,7 @@ private:
   void start_accept() {
 
 
-	cout << "Waiting for a connection..." << endl;
+	cout << endl << "Waiting for a connection..." << endl;
 
 
     tcp_connection::pointer new_connection =
@@ -1452,7 +1452,7 @@ int main(int argc, char *argv[]) {
 
 	//Take user input
 	srvOp = userInput(srvOp);
-	cout << "Options: " << srvOp.toString() << endl;
+	//cout << "Options: " << srvOp.toString() << endl;
 	cout << "Loading File..." << endl;
 	//string filePath = "hi.txt";
 
