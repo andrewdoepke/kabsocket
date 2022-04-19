@@ -719,7 +719,7 @@ private:
 	//Load configuration
 	string configJson = read_();
 	send_("ACK");
-	
+
 	//cout << "Config json: " << configJson << endl;
 
 	srvOp = readSrvOp(configJson);
@@ -733,7 +733,7 @@ private:
 	win_start = 0;
 	win_end = winSize - 1;
 	curr_frame = 0;
-	
+
 	seqLow = srvOp.seqLower;
 
 	resended = false;
@@ -751,18 +751,17 @@ private:
 	seq_last = 0;
 	seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
 	//cout << "Initial Last: " << seq_last << endl;
-	
+
 	packInd = 0;
-	
+
 	dropAcks = srvOp.loseAck;
 
 		dropSize = dropAcks.size();
 			//cout << "dropper " << dropSize << endl;
 		if(dropSize > 0){
 			currLossInd = 0;
-
 			currLoss = dropAcks[currLossInd];
-			cout << "Current ack to lose " << currLoss << endl;
+			//cout << "Current ack to lose " << currLoss << endl;
 		} else {
 			currLossInd = -1;
 			currLoss = -1;
@@ -772,10 +771,10 @@ private:
 	for(int n : dropAcks){
 		c = c + "" + std::to_string(n) + " ";
 	}
-	
+
 	//cout << c << endl;
-	
-	
+
+
 	start_read();
 	#ifdef DEBUG
 		cout << "Reading... " << endl;
@@ -861,7 +860,7 @@ string read_() {
 	//Read handler. We are only receiving packets, so this will parse them and do what we need to do.
   void handle_read(const bs::error_code& ec, std::size_t n)
   {
-	  
+
 	sendAck = true;
 	  tcp_packet curr_pack;
 	  tcp_header curr_head;
@@ -911,7 +910,7 @@ string read_() {
 		start_read();
 		return;
 	}
-	
+
 	//cout << "line decoded: " << line << endl;
 	if(line == "HOLUP"){
 		start_read();
@@ -952,7 +951,7 @@ string read_() {
 		   return;
 
 	   } else { //Default case. This is a packet so read it into packets
-	   
+
 	   if(line != "eoframe"){
 			bool isvalid;
 			//cout << "got hereeee. line=" << line << endl;
@@ -985,8 +984,8 @@ string read_() {
 				//resend
 				resended = true;
 			}
-			
-			
+
+
 			//check seq nums
 			seq_curr = (uint32_t)curr_head.seq_num;
 
@@ -1014,13 +1013,13 @@ string read_() {
 		   //win_end -= winSize;
 		   //win_start -= winSize;
 		   //curr_frame = win_end;
-		   
+
 		   sendAck = true;
-		   
+
 		   if(curr_frame < win_end && resended){
 			   curr_frame = win_end;
 		   }
-		   
+
 		   cout << "After ending, current frame is " << curr_frame << " and current end is " << win_end << endl;
 	   }
 
@@ -1032,29 +1031,29 @@ string read_() {
 					size_t len;
 					string readit;
 
-					cout << "crap..." << endl;
+					//cout << "crap..." << endl;
 
 					switch(protocol){
 						case 1: //GBN
 							//resend
 							//clearSock(n);
 							//pop back entire frame
-							
+
 							#ifdef DEBUG
 								cout << "here" << endl;
 								cout << "starting window loc: " << win_start << endl;
 							#endif
-							
+
 							int f;
 							f = curr_frame;
-							
+
 							//win_start -= (win_end - curr_frame);
 							//if(win_start < 0){
 							//	win_start = 0;
 							//}
-							
+
 							//cout << "starting Window loc after " << win_start << endl;
-							
+
 							int tempo;
 							tempo = lastSeqNum(seq_curr, seqHi, seqLow);
 							while(tempo != seq_last){
@@ -1062,9 +1061,9 @@ string read_() {
 								//win_start++;
 								tempo = lastSeqNum(tempo, seqHi, seqLow);
 							}
-							
+
 							f--;
-													
+
 							seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
 							for(f; f > win_start; f--){
 								if(packets.size() > 0){
@@ -1081,18 +1080,18 @@ string read_() {
 									cout << "sequence is " << seq_last << endl;
 								#endif
 							}
-							
-							
+
+
 							//cout << "got here with segfault" << endl;
-							
+
 							//if(win_start > 0){
 							//	seq_last = lastSeqNum(seq_last, seqHi, seqLow);
 							//}
 
 							seq_curr = seq_last;
 							seq_last = lastSeqNum(seq_last, seqHi, seqLow);
-							
-							
+
+
 
 							#ifdef DEBUG
 								cout << "new curr sequence: " << seq_curr << endl;
@@ -1104,6 +1103,7 @@ string read_() {
 							//reinit the window and frame
 							//win_start -= winSize;
 							//win_end -= winSize;
+							win_end = win_start + winSize;
 							curr_frame = win_start;
 
 							#ifdef DEBUG
@@ -1136,7 +1136,7 @@ string read_() {
 							break;
 				}//end missed
 			}
-			
+
 
 			//cout << "window end: " << win_end << endl;f
 			//frame shift 	do we need an ack on this one?
@@ -1147,13 +1147,13 @@ string read_() {
 				#ifdef DEBUG
 					cout << "shifting beginning of window to " << (win_start + 1) << endl;
 				#endif
-				
-				
+
+
 
 				//win_start += winSize; //move to next frame outside of the window
 				//win_end += winSize;
 				//curr_frame = win_start;
-				
+
 				win_start ++; //move to next frame outside of the window
 				win_end ++;
 				curr_frame ++;
@@ -1177,10 +1177,17 @@ string read_() {
 					send_(ackit);
 					cout << "Ack " << currAck << " sent" << endl;
 					currAck++;
-					
+
 				} else if(currLossInd < dropSize && currLossInd >= 0) {
 						currLossInd++;
 						currLoss = dropAcks[currLossInd];
+						//win_start--;
+						//if(win_start < 0) {
+						//	win_start = 0;
+						//}
+						//curr_frame = win_start;
+
+						//seq_curr = lastSeqNum(seq_curr, seqHi, seqLow);
 						//cout << "New ack to drop: " << currLoss << endl;
 					} else  { //lose the packet
 						currLoss = -1;
@@ -1199,11 +1206,11 @@ string read_() {
 				}
 				cout << "]" << endl;
 		  }
-		  
+
 		  if(line == "eoframe"){
 			  curr_frame--;
 		  }
-			
+
 			seq_last = seq_curr; //set last
 			//cout << "last after: " << seq_last;
 			packets.push_back(curr_pack);
@@ -1303,9 +1310,9 @@ string read_() {
 
   void printOutput() {
 		retransmittedPackets -= originialPackets;
-	  
+
 		//cout << endl << "Complete. " << endl << endl;
-		
+
 		cout << "Last packet seq# received: " << lastPcktSeqNum << endl;
 		cout << "Number of original packets received: " << originialPackets << endl;
 		cout << "Number of retransmitted packets received: " << retransmittedPackets << endl << endl;

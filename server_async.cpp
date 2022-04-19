@@ -931,16 +931,16 @@ public:
 
 	  cout << "Connected!" << endl << endl << "Running..." << endl << endl;
 	//start_read();
-#ifdef debug	
+#ifdef debug
 	cout << "Before sending, server options to string: " << srvOp.toString() << endl;
 
 	cout << "Sending Server Config" << endl;
 #endif
 
 	string configJson = srvOp.toJson();
-	
+
 	send_(configJson); //sends the json of the srvConf
-	
+
 #ifdef debug
 	cout << "Sent!" << endl << endl;
 #endif
@@ -955,6 +955,8 @@ public:
 	elapsedTime = 0;
 	throughputTotal = 0;
 	effThroughput = 0;
+
+	ack_number = 1;
 
 	//wait for ack, but this is generic so not using waitforack function
 	while(val != "ACK"){
@@ -1031,9 +1033,9 @@ string read_() {
 #endif
 	// Output for timing out
 	// cout << "Packet " << _____ << " *****Timed Out *****" << endl;
-	
+
 	cout << "Timed out." << endl;
-	
+
 	//HANDLE SERVER SIDE TIMEOUT
 	send_("REDO"); //This will kill the client with exit command
 	return;
@@ -1060,7 +1062,7 @@ string read_() {
 			return other;
 		}
 	}
-	
+
 	return other;
   }
 
@@ -1171,7 +1173,7 @@ string read_() {
 
 			//cout << "current packet index we need to lose: " << currLoss << endl;
 			//cout << "Drop Packet Size: " << dropSize << " and current index is " << currLossInd << endl;
-			
+
 			//if(curr_frame == win_end){ //current frame is the final in the window
 					needAck = true; //we need this, commented out for the time being for testing
 			//}
@@ -1198,7 +1200,7 @@ string read_() {
 #endif
 				other = waitForAck(&currAck); //ack number is iterated here!
 				needAck = false;
-				
+
 				if(other == "ACK") {
 					cout << "Current window = [";
 					for(int p = win_start; p <= win_end; p++){
@@ -1217,7 +1219,7 @@ string read_() {
 #ifdef debug
 				cout << "Resending..." << endl;
 #endif
-				
+
 				/*while (she != "GO"){
 					send_("HOLUP");
 					she = "";
@@ -1225,11 +1227,11 @@ string read_() {
 					she = read_();
 #ifdef debug
 					cout << "got: " << she << endl;
-					
+
 					//if(she == "GIVEMEHOLUP"){
 						send_("HOLUP");
 					//}
-					
+
 					if(she == "bad"){
 						return;
 					}
@@ -1243,16 +1245,16 @@ string read_() {
 				//handle resending
 				switch(protocol){
 					case 1: //GBN
-						
+
 						//cout << "Win start before is " << win_start << " and minus a winSize of " << winSize << " = " << (win_start - winSize) << endl;
 						//reinit the window and frame
 						//win_start -= winSize;
 						if(win_start < 0){
 							win_start = 0;
 						}
-						
-						
-						
+
+
+
 						/*for(int f = 0; f < winSize; f++){
 							if(win_start > 0){
 								win_start--;
@@ -1260,14 +1262,14 @@ string read_() {
 							//curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
 						}*/
 
-						
+
 						//win_end -= winSize;
 						win_end = win_start + winSize;
 						curr_frame = win_start;
 #ifdef debug
 						cout << "Lost a packet! Resending frame starting at " << win_start << "..." << endl;
 #endif
-						cout << "Packet " << i << " Re-transmitted." << endl;
+						cout << "Packet Re-transmitted." << endl;
 						//pop back entire frame
 						//i -= (winSize);
 						//i = curr_frame;
@@ -1277,27 +1279,27 @@ string read_() {
 							//cout << "current i " << i << endl;
 							curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
 						}
-						
+
 						//cout << "Set i to " << i << endl;
 #ifdef debug
 						cout << "new starting packet: " << i << " with seq num " << curr_head.seq_num << endl;
-						i--;
 #endif
+						i--;
 						curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
 						other = "";
 						//send_("HOLUP");
-						
+
 						she = "";
-						
+
 						/*while (she != "GO"){
 							she = read_();
 							cout << "got: " << she << endl;
 						}
 						she = "";*/
-						
+
 						int jj;
 						//waitForAck(&jj);
-						
+
 						advance = false;
 						break;
 					case 2: //SR
@@ -1328,7 +1330,7 @@ string read_() {
 				if(curr_frame >= limit){ //we're past the end!
 #ifdef debug
 					cout << "current frame " << curr_frame << " and the final index was " << (limit-1) << endl;
-					//other = waitForAck(&currAck); 
+					//other = waitForAck(&currAck);
 #endif
 				}
 			}
@@ -1368,7 +1370,7 @@ string read_() {
 	sentPackets = bodies.size();
 	elapsedTime = (clock() - startTime)/CLOCKS_PER_SEC; //variable here
 	throughputTotal = ((srvOp.packetSize * retransmittedPackets)/elapsedTime) / 1000 / 1000;
-	
+
 	retransmittedPackets -= sentPackets;
 
 
