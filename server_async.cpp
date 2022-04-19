@@ -35,6 +35,8 @@ typedef std::vector<string> StrVec;
 
 const char delim = '\x04';
 
+int ack_number = 1;
+
 //--------------Define Flags--------------//
 // https://www.geeksforgeeks.org/tcp-flags/
 //If changed, we need to also copy this to client code.
@@ -1029,7 +1031,9 @@ string read_() {
 #endif
 	// Output for timing out
 	// cout << "Packet " << _____ << " *****Timed Out *****" << endl;
-
+	
+	cout << "Timed out." << endl;
+	
 	//HANDLE SERVER SIDE TIMEOUT
 	send_("REDO"); //This will kill the client with exit command
 	return;
@@ -1037,7 +1041,7 @@ string read_() {
   }
 
   //This will wait for an ack to come in
-  string waitForAck(int *ack_number){
+  string waitForAck(int *ack_numb){
 	string validate = "";
 	string other = "";
 	string ackit = getConstStr(ACK);
@@ -1046,13 +1050,17 @@ string read_() {
 		validate = read_();
 		if(validate=="TIMEOUT"){
 			handleTimeout();
+		} else if(validate == "ACK"){
+			cout << "Ack " << ack_number << " received" << endl;
+			ack_number++;
+			other = validate;
+			return other;
 		} else { //something other than an ack or a timeout
 			other = validate;
 			return other;
 		}
 	}
-	cout << "Ack " << ack_number << " received" << endl;
-	*ack_number++;
+	
 	return other;
   }
 
@@ -1190,6 +1198,17 @@ string read_() {
 #endif
 				other = waitForAck(&currAck); //ack number is iterated here!
 				needAck = false;
+				
+				if(other == "ACK") {
+					cout << "Current window = [";
+					for(int p = win_start; p <= win_end; p++){
+						cout << p;
+						if(p != win_end){
+							cout << ", ";
+						}
+					}
+					cout << "]" << endl;
+				}
 			}
 
 			if(other == "RESEND"){
@@ -1248,7 +1267,7 @@ string read_() {
 #ifdef debug
 						cout << "Lost a packet! Resending frame starting at " << win_start << "..." << endl;
 #endif
-						//cout << "Packet " << i << " Re-transmitted." << endl;
+						cout << "Packet " << i << " Re-transmitted." << endl;
 						//pop back entire frame
 						//i -= (winSize);
 						//i = curr_frame;
