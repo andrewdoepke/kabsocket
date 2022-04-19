@@ -703,7 +703,7 @@ void populateRandoms(IntVec *Packs, IntVec *Acks, int bodySize){
 
 		for (int i = 0; i < bodySize; i++) {
 			int randomChance = rand() % 5;
-			if (randomChance = 2) {
+			if (randomChance == 2) {
 				Packs->push_back(i);
 			}
 		}
@@ -712,7 +712,7 @@ void populateRandoms(IntVec *Packs, IntVec *Acks, int bodySize){
 
 		for (int i = 0; i < bodySize; i++) {
 			int randomChance = rand() % 5;
-			if (randomChance = 2) {
+			if (randomChance == 2) {
 				Acks->push_back(i);
 			}
 		}

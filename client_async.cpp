@@ -1179,8 +1179,9 @@ string read_() {
 					currAck++;
 					
 				} else if(currLossInd < dropSize && currLossInd >= 0) {
-						currLoss = dropAcks[currLossInd] - 1;
 						currLossInd++;
+						currLoss = dropAcks[currLossInd];
+						cout << "New ack to drop: " << currLoss << endl;
 					} else  { //lose the packet
 						currLoss = -1;
 						currLossInd = -1;
