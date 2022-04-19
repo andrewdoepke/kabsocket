@@ -1069,7 +1069,7 @@ string read_() {
 							for(f; f > win_start; f--){
 								if(packets.size() > 0){
 									packets.pop_back();
-									cout << "New packet size: " << packets.size() << endl;
+									//cout << "New packet size: " << packets.size() << endl;
 								}
 								//curr_frame--;
 								#ifdef DEBUG
@@ -1181,7 +1181,7 @@ string read_() {
 				} else if(currLossInd < dropSize && currLossInd >= 0) {
 						currLossInd++;
 						currLoss = dropAcks[currLossInd];
-						cout << "New ack to drop: " << currLoss << endl;
+						//cout << "New ack to drop: " << currLoss << endl;
 					} else  { //lose the packet
 						currLoss = -1;
 						currLossInd = -1;

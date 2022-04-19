@@ -1172,10 +1172,10 @@ string read_() {
 				send_(tempPack);
 				retransmittedPackets++;
 			} else if(currLossInd < dropSize && currLossInd >= 0) {
-					cout << "Dropped at currLoss " << currLoss << endl;
+					//cout << "Dropped at currLoss " << currLoss << endl;
 					currLossInd++;
 					currLoss = dropPacket[currLossInd] - 1;
-					cout << "New currLoss to drop: " << currLoss << " at currLossInd " << currLossInd << endl;
+					//cout << "New currLoss to drop: " << currLoss << " at currLossInd " << currLossInd << endl;
 					needAck = false;
 				} else  { //lose the packet
 					currLoss = -1;
@@ -1255,7 +1255,7 @@ string read_() {
 						//cout << "current frame: " << curr_frame << endl;
 						while(i > curr_frame){
 							i--;
-							cout << "current i " << i << endl;
+							//cout << "current i " << i << endl;
 							curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
 						}
 						
@@ -1347,18 +1347,19 @@ string read_() {
   	cout << "Session successfully terminated" << endl << endl;
 
 	sentPackets = bodies.size();
-	retransmittedPackets -= sentPackets;
 	elapsedTime = (clock() - startTime)/CLOCKS_PER_SEC; //variable here
+	throughputTotal = ((srvOp.packetSize * retransmittedPackets)/elapsedTime) / 1000 / 1000;
+	
+	retransmittedPackets -= sentPackets;
 
-	throughputTotal = ((srvOp.packetSize * retransmittedPackets)/elapsedTime) / 1000 / 100;
 
-	effThroughput = ((srvOp.packetSize * sentPackets)/elapsedTime) / 1000 / 100;
+	effThroughput = ((srvOp.packetSize * sentPackets)/elapsedTime) / 1000 / 1000;
 
   	cout << "Number of original packets sent: " << sentPackets << endl;
 	cout << "Number of retransmitted packets: " << retransmittedPackets << endl;
-	cout << "Total elapsed time: " << elapsedTime << endl;
-	cout << "Total throughput (Mbps): " << throughputTotal << endl;
-	cout << "Effective throughput: " << effThroughput << endl;
+	cout << "Total elapsed time: " << elapsedTime << " seconds" << endl;
+	cout << "Total throughput: " << throughputTotal << " Mb/s" << endl;
+	cout << "Effective throughput: " << effThroughput << " Mb/s" << endl;
 }
 
 private:
@@ -1388,7 +1389,7 @@ private:
 	double elapsedTime;
 	double throughputTotal;
 	double effThroughput;
-	int startTime;
+	double startTime;
 
 	int seqLow;
 	int seqHi;
