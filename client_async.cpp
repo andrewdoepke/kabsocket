@@ -365,7 +365,7 @@ struct srv_options {
 		for(int i : loseAck){
 			pt::ptree element2;
 			element2.put(std::to_string(j), i);
-			dropPacketArr.push_back(pt::ptree::value_type("", element2));
+			loseAckArr.push_back(pt::ptree::value_type("", element2));
 			j++;
 		}
 
@@ -719,6 +719,8 @@ private:
 	//Load configuration
 	string configJson = read_();
 	send_("ACK");
+	
+	cout << "Config json: " << configJson << endl;
 
 	srvOp = readSrvOp(configJson);
 	#ifdef DEBUG
@@ -743,33 +745,37 @@ private:
 	seq_curr = stoi(firsty);
 	send_("ACK");
 
-	cout << "first seq number: " << seq_curr << endl;
+	//cout << "first seq number: " << seq_curr << endl;
 
 	seq_last = 0;
 	seq_last = lastSeqNum(seq_curr, seqHi, seqLow);
 	//cout << "Initial Last: " << seq_last << endl;
 	
 	packInd = 0;
-
+	
 	dropAcks = srvOp.loseAck;
 
-	start_read();
-
-		int dropSize = dropAcks.size();
+		dropSize = dropAcks.size();
+			//cout << "dropper " << dropSize << endl;
 		if(dropSize > 0){
 			currLossInd = 0;
 
-			currLoss = dropAcks[currLossInd] - 1;
+			currLoss = dropAcks[currLossInd];
+			cout << "Current ack to lose " << currLoss << endl;
 		} else {
 			currLossInd = -1;
 			currLoss = -1;
 		}
 
-	std::string c = "Ack numbers to be lost: ";
+	std::string c = "Acky boi numbers to be lost: ";
 	for(int n : dropAcks){
 		c = c + "" + std::to_string(n) + " ";
 	}
-
+	
+	//cout << c << endl;
+	
+	
+	start_read();
 	#ifdef DEBUG
 		cout << "Reading... " << endl;
 	#endif

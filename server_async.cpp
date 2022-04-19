@@ -350,7 +350,7 @@ struct srv_options {
 		for(int i : loseAck){
 			pt::ptree element2;
 			element2.put(std::to_string(j), i);
-			dropPacketArr.push_back(pt::ptree::value_type("", element2));
+			loseAckArr.push_back(pt::ptree::value_type("", element2));
 			j++;
 		}
 
@@ -929,10 +929,16 @@ public:
 
 	  cout << "Connected!" << endl;
 	//start_read();
+	
+	cout << "Before sending, server options to string: " << srvOp.toString() << endl;
 
 	cout << "Sending Server Config" << endl;
+	string configJson = srvOp.toJson();
+	
+	cout << "config json: " << configJson << endl;
+	
 #endif
-	send_(srvOp.toJson()); //sends the json of the srvConf
+	send_(configJson); //sends the json of the srvConf
 #ifdef debug
 	cout << "Sent!" << endl << endl;
 #endif
