@@ -1158,9 +1158,9 @@ string read_() {
 			//cout << "current packet index we need to lose: " << currLoss << endl;
 			//cout << "Drop Packet Size: " << dropSize << " and current index is " << currLossInd << endl;
 			
-			if(curr_frame == win_end){ //current frame is the final in the window
+			//if(curr_frame == win_end){ //current frame is the final in the window
 					needAck = true; //we need this, commented out for the time being for testing
-			}
+			//}
 
 			if(i != currLoss){
 				send_(tempPack);
@@ -1170,6 +1170,7 @@ string read_() {
 					currLossInd++;
 					currLoss = dropPacket[currLossInd] - 1;
 					cout << "New currLoss to drop: " << currLoss << " at currLossInd " << currLossInd << endl;
+					needAck = false;
 				} else  { //lose the packet
 					currLoss = -1;
 					currLossInd = -1;
@@ -1253,7 +1254,7 @@ string read_() {
 #ifdef debug
 						cout << "new starting packet: " << i << " with seq num " << curr_head.seq_num << endl;
 #endif
-						//curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
+						curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
 						other = "";
 						//send_("HOLUP");
 						
@@ -1298,13 +1299,15 @@ string read_() {
 				if(curr_frame >= limit){ //we're past the end!
 #ifdef debug
 					cout << "current frame " << curr_frame << " and the final index was " << (limit-1) << endl;
+					//other = waitForAck(&currAck); 
 #endif
 				}
 			}
 
 		} //end for loop
+		cout << "here. Exited the loopy" << endl;
+		//waitForAck(&currAck);
 #ifdef debug
-		waitForAck(&currAck);
 	   cout << "Sent! Telling client to exit." << endl;
 #endif
 	   send_(finish);

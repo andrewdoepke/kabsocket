@@ -905,7 +905,7 @@ string read_() {
 		return;
 	}
 	
-	//cout << "line decoded: " << line << endl;
+	cout << "line decoded: " << line << endl;
 	if(line == "HOLUP"){
 		start_read();
 		return;
@@ -1018,7 +1018,7 @@ string read_() {
 	   }
 
 
-			if(resended == true && curr_frame == win_end){
+			if(resended == true){
 			//we missed something!!
 					std::string aya = "";
 					std::string linea = "";
@@ -1092,7 +1092,7 @@ string read_() {
 
 							//send_("GO");
 
-							sendAck = false;
+							//sendAck = false;
 							resended = false;
 							start_read();
 							return;
@@ -1143,7 +1143,7 @@ string read_() {
 						currLoss = -1;
 						currLossInd = -1;
 				}
-				sendAck = false;
+				//sendAck = false;
 
 				cout << "Current Window = [";
 				for (int w = win_start; w < win_end; w++) {
