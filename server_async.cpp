@@ -1089,7 +1089,7 @@ string read_() {
 			currLossInd = -1;
 			currLoss = -1;
 		}
-
+		ack_number--;
 
 		string validate = "";
 		string exit = "EXIT";
