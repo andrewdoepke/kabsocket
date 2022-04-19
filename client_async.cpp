@@ -978,11 +978,12 @@ string read_() {
 				//resend
 				resended = true;
 			}
-
+			
+			
 			//check seq nums
 			seq_curr = (uint32_t)curr_head.seq_num;
 
-			//cout << "current seq num: " << seq_curr << endl;
+			cout << "current seq num: " << seq_curr << endl;
 
 			//if(seq_last == 0){
 			//	seq_last = lastSeqNum(seq_curr, seqHi, seqLow);

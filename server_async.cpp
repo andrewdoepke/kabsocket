@@ -1219,14 +1219,17 @@ string read_() {
 					case 1: //GBN
 
 						//reinit the window and frame
-						//win_start -= winSize;
+						win_start -= winSize;
+						if(win_start < 0){
+							win_start = 0;
+						}
 						
-						for(int f = 0; f < winSize; f++){
+						/*for(int f = 0; f < winSize; f++){
 							if(win_start > 0){
 								win_start--;
 							}
-							curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
-						}
+							//curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
+						}*/
 
 						
 						//win_end -= winSize;
@@ -1238,13 +1241,19 @@ string read_() {
 						cout << "Packet " << i << " Re-transmitted." << endl;
 						//pop back entire frame
 						//i -= (winSize);
-						i = curr_frame;
+						//i = curr_frame;
+						cout << "current frame: " << curr_frame << endl;
+						while(i > curr_frame){
+							i--;
+							cout << "current i " << i << endl;
+							curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
+						}
 						
 						cout << "Set i to " << i << endl;
 #ifdef debug
 						cout << "new starting packet: " << i << " with seq num " << curr_head.seq_num << endl;
 #endif
-						curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
+						//curr_head.seq_num = lastSeqNum(curr_head.seq_num, seqHi, seqLow);
 						other = "";
 						//send_("HOLUP");
 						
