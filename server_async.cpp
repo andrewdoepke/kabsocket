@@ -925,20 +925,20 @@ public:
 
   void start() {
 
-#ifdef debug
+
 
 	  cout << "Connected!" << endl;
 	//start_read();
-	
+#ifdef debug	
 	cout << "Before sending, server options to string: " << srvOp.toString() << endl;
 
 	cout << "Sending Server Config" << endl;
+#endif
+
 	string configJson = srvOp.toJson();
 	
-	cout << "config json: " << configJson << endl;
-	
-#endif
 	send_(configJson); //sends the json of the srvConf
+	
 #ifdef debug
 	cout << "Sent!" << endl << endl;
 #endif
@@ -1225,7 +1225,7 @@ string read_() {
 				switch(protocol){
 					case 1: //GBN
 						
-						cout << "Win start before is " << win_start << " and minus a winSize of " << winSize << " = " << (win_start - winSize) << endl;
+						//cout << "Win start before is " << win_start << " and minus a winSize of " << winSize << " = " << (win_start - winSize) << endl;
 						//reinit the window and frame
 						//win_start -= winSize;
 						if(win_start < 0){

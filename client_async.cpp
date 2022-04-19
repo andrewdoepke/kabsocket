@@ -738,6 +738,7 @@ private:
 
 	resended = false;
 	seqHi = srvOp.seqUpper;
+	timed = false;
 
 	currAck = 1;
 	protocol = srvOp.proType;
